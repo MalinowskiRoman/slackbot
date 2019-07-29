@@ -1,14 +1,11 @@
 '''Created by Roman Malinowski '''
 import copy
-
-
+import numpy as np
 
 
 def update(board_param, list_coord, val):
-    new_board = copy.deepcopy(board_param)
     for team_val in list_coord:
-        new_board[team_val[0]][team_val[1]] = val
-    return new_board
+        board_param[team_val[0]][team_val[1]] = val
 
 
 def check_lines(i, j, board_param, team_val):
@@ -23,7 +20,7 @@ def check_lines(i, j, board_param, team_val):
         elif board[i - v - 1][j] == 0:
             break
         else:
-            board = update(board, mem, team_val)
+            update(board, mem, team_val)
             break
 
     # down vertical
@@ -34,7 +31,7 @@ def check_lines(i, j, board_param, team_val):
         elif board[i + v][j] == 0:
             break
         else:
-            board = update(board, mem, team_val)
+            update(board, mem, team_val)
             break
 
     # left horizontal
@@ -46,7 +43,7 @@ def check_lines(i, j, board_param, team_val):
 
             break
         else:
-            board = update(board, mem, team_val)
+            update(board, mem, team_val)
             break
 
     # right horizontal
@@ -57,7 +54,7 @@ def check_lines(i, j, board_param, team_val):
         elif board[i][j + v] == 0:
             break
         else:
-            board = update(board, mem, team_val)
+            update(board, mem, team_val)
             break
 
     # UL diagonal
@@ -68,7 +65,7 @@ def check_lines(i, j, board_param, team_val):
         elif board[i - v][j - v] == 0:
             break
         else:
-            board = update(board, mem, team_val)
+            update(board, mem, team_val)
             break
 
     # UR diagonal
@@ -79,7 +76,7 @@ def check_lines(i, j, board_param, team_val):
         elif board[i - v][j + v] == 0:
             break
         else:
-            board = update(board, mem, team_val)
+            update(board, mem, team_val)
             break
 
     # DL diagonal
@@ -90,7 +87,7 @@ def check_lines(i, j, board_param, team_val):
         elif board[i + v][j - v] == 0:
             break
         else:
-            board = update(board, mem, team_val)
+            update(board, mem, team_val)
             break
 
     # DR diagonal
@@ -101,9 +98,8 @@ def check_lines(i, j, board_param, team_val):
         elif board[i + v][j + v] == 0:
             break
         else:
-            board = update(board, mem, team_val)
+            update(board, mem, team_val)
             break
-
     return board
 
 
@@ -117,11 +113,10 @@ def is_move_possible(i, j, board_param, team_val):
 
 
 def possible_moves(board_param, team_val, avoid_moves=[], go_moves=[]):
-    board = copy.deepcopy(board_param)
     list_moves = []
     for i in range(8):
         for j in range(8):
-            if is_move_possible(i, j, board, team_val):
+            if is_move_possible(i, j, board_param, team_val):
                 list_moves += [(i, j)]
     for i in avoid_moves:
         try:
@@ -144,7 +139,7 @@ def possible_moves(board_param, team_val, avoid_moves=[], go_moves=[]):
 def execute_turn(i, j, board_param, team_val):
     board = copy.deepcopy(board_param)
     board = check_lines(i, j, board, team_val)
-    if possible_moves(board, -team_val) == []:
+    if not possible_moves(board, -team_val):
         return False, board
     else:
         return True, board
@@ -178,7 +173,7 @@ def play_othello1():
         format_ok = False
         while not format_ok:
             print('')
-            print_board(board)
+            print_board1(board)
             print('\nTime for the ' + team + ' team to play !')
             txt = input('Where do you want to place a pawn ?\n\n')
             print('')
@@ -211,17 +206,16 @@ def play_othello1():
             continue
         
     white, black = count_score(board)
-    print_board(board)
+    print_board1(board)
     print('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
     return True
 
 
 def explore_board(board_move, team_val):
-    board = copy.deepcopy(board_move[0])
-    moves = possible_moves(board, team_val)
+    moves = possible_moves(board_move[0], team_val)
     boards = []
     for move in moves:
-        boards += [[check_lines(move[0], move[1], board, team_val)] + board_move[1:] + [move]]
+        boards += [[check_lines(move[0], move[1], board_move[0], team_val)] + board_move[1:] + [move]]
     return boards
 
 
@@ -252,10 +246,35 @@ def determine_best_move(board_param, team_val, depth=3):
     return boards_moves[values.index(max(values))][1]
 
 
+def alpha_beta(board_param, team_val, alpha, beta, maximize=True, depth=3):
+    if depth == 0 or not possible_moves(board_param, team_val):
+        return count_score(board_param)
+    else:
+        board = copy.deepcopy(board_param)
+        if maximize:
+            max_ = - np.inf
+            for move in possible_moves(board, - team_val):
+                val = alpha_beta(check_lines(move[0], move[1], board_param, -team_val), -team_val, alpha, beta, not maximize, depth - 1)
+                max_ = max(max_, val)
+                alpha = max(alpha, max_)
+                if beta <= alpha:
+                    break
+            return max_
+        else:
+            min_ = np.inf
+            for move in possible_moves(board, - team_val):
+                val = alpha_beta(check_lines(move[0], move[1], board_param, -team_val), -team_val, alpha, beta, not maximize, depth - 1)
+                min_ = min(min_, val)
+                beta = min(min_, beta)
+                if beta <= alpha:
+                    break
+            return min_
+
+
 def print_board1(board):
     w = '\u25CE'
     b = '\u25C9'
-    print('\u22BF a|b| c|d| e|f| g|h')
+    print('\u22BF a|b|c|d|e|f|g|h')
 
     for index, line in enumerate(board):
         li = str(index + 1) + '|'
@@ -266,7 +285,7 @@ def print_board1(board):
                 li += b + '|'
             else:
                 li += '\u25A2' + '|'
-        print('\x1b[7;37;40m' + li)
+        print(li)
     print(' ' + '\u203E' * 16)
 
 
@@ -282,3 +301,5 @@ boardTest = check_lines(2, 4, boardTest, 1)
 #
 #
 # print(determine_best_move(boardTest, -1, depth=5))
+
+play_othello1()
