@@ -11,7 +11,6 @@ token = 'xoxp-684260139683-689311425137-684247936882-151caac50e5f63ad69b6272127a
 bot_token = 'xoxb-684260139683-697808802582-aBdjKsw9s19ikbcFrtPpwEP7'
 
 channel_name = 'general'
-othello_flag = False
 last_move = ''
 move = ''
 team = 'white'
@@ -89,8 +88,6 @@ def analyse_message(tok=token):
                 elif 'othello joueur 2' in text.lower():
                     with open('C:/Users/roman/Desktop/othello.txt', 'a') as f:
                         f.writelines(last_message['user'])
-                    global othello_flag
-                    othello_flag = True
                     play_othello()
                 elif 'help' in text.lower():
                     write_message(
@@ -153,7 +150,7 @@ def print_board(board):
     numbers = ["one1", "two1", "three1", "four1", "five1", "six1", "seven1", "eight1"]
     w = ':white_pawn:'
     b = ':black_pawn:'
-    li = ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter:\n'
+    li = ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
 
     for index, line in enumerate(board):
         li += ':' + numbers[index] + ':'
@@ -164,7 +161,8 @@ def print_board(board):
                 li += b
             else:
                 li += ':white_grid:'
-        li += '\n'
+        li += ':' + numbers[index] + ':'+'\n'
+    li += ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
     write_message(li)
 
 
@@ -189,7 +187,6 @@ def update_counter(name):
 def play_othello():
     # white is -1
     # black is 1
-
     board = [[0 for i in range(8)] for j in range(8)]
     board[3][3] = board[4][4] = 1
     board[4][3] = board[3][4] = -1
@@ -213,8 +210,6 @@ def play_othello():
                     black, white = count_score(board)
                     print_board(board)
                     write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
-                    global othello_flag
-                    othello_flag = False
                     return 0
             if i in range(8) and j in range(8):
                 if is_move_possible(i, j, board, pos):
@@ -239,8 +234,6 @@ def play_othello():
     black, white = count_score(board)
     print_board(board)
     write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
-    global othello_flag
-    othello_flag = False
     return 0
 
 
@@ -259,7 +252,9 @@ for dic in channels['channels']:
         channel_id = dic['id']
         print('Channel id : ' + channel_id)
 
+# install slackclient if WebClient is not recognized
 client = slack.WebClient(token=bot_token)
+
 if client.rtm_connect():
     print("Starter Bot connected and running!")
     # Read bot's user ID by calling Web API method `auth.test`
