@@ -155,7 +155,7 @@ def count_score(board):
                 black += 1
             elif board[i][j] == -1:
                 white += 1
-    return white, black
+    return black, white
 
 
 def play_othello1():
@@ -205,7 +205,7 @@ def play_othello1():
         else:
             continue
         
-    white, black = count_score(board)
+    black, white = count_score(board)
     print_board1(board)
     print('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
     return True
@@ -240,13 +240,16 @@ def determine_best_move(board_param, team_val, depth=3):
         values += [count_score(boards_moves[i][0])]
         moves += [boards_moves[i][1:]]
     if team_val == 1:
-        values = [values[i][1] for i in range(len(values))]
+        values = [values[i][0] for i in range(len(values))]
     else:
-        values = [values[0][1] for i in range(len(values))]
+        values = [values[i][1] for i in range(len(values))]
     return boards_moves[values.index(max(values))][1]
 
 
 def alpha_beta(board_param, team_val, alpha, beta, maximize=True, depth=3):
+    # We have to return the score of the root team (in the algorithm
+    # the other team want to minimize this one, not maximizing it, even if
+    # is equivalent in othello
     if depth == 0 or not possible_moves(board_param, team_val):
         return count_score(board_param)
     else:
@@ -254,7 +257,7 @@ def alpha_beta(board_param, team_val, alpha, beta, maximize=True, depth=3):
         if maximize:
             max_ = - np.inf
             for move in possible_moves(board, - team_val):
-                val = alpha_beta(check_lines(move[0], move[1], board_param, -team_val), -team_val, alpha, beta, not maximize, depth - 1)
+                val = alpha_beta(check_lines(move[0], move[1], board_param, -team_val), team_val, alpha, beta, not maximize, depth - 1)
                 max_ = max(max_, val)
                 alpha = max(alpha, max_)
                 if beta <= alpha:
@@ -263,7 +266,7 @@ def alpha_beta(board_param, team_val, alpha, beta, maximize=True, depth=3):
         else:
             min_ = np.inf
             for move in possible_moves(board, - team_val):
-                val = alpha_beta(check_lines(move[0], move[1], board_param, -team_val), -team_val, alpha, beta, not maximize, depth - 1)
+                val = alpha_beta(check_lines(move[0], move[1], board_param, -team_val), team_val, alpha, beta, not maximize, depth - 1)
                 min_ = min(min_, val)
                 beta = min(min_, beta)
                 if beta <= alpha:

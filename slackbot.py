@@ -139,11 +139,6 @@ def analyse_othello_move(team, tok=token):
                 except:
                     write_message('Use a format like "b7" !')
             elif 'quit' in text:
-                white, black = count_score(board)
-                print_board(board)
-                write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
-                global othello_flag
-                othello_flag = False
                 return 'quit', 0
         return -1, -1
     except IndexError:
@@ -215,6 +210,11 @@ def play_othello():
                     last_move = move
                     break
                 if i == 'quit':
+                    black, white = count_score(board)
+                    print_board(board)
+                    write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
+                    global othello_flag
+                    othello_flag = False
                     return 0
             if i in range(8) and j in range(8):
                 if is_move_possible(i, j, board, pos):
@@ -236,11 +236,12 @@ def play_othello():
             break
         else:
             continue
-    white, black = count_score(board)
+    black, white = count_score(board)
     print_board(board)
     write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
     global othello_flag
     othello_flag = False
+    return 0
 
 
 '''Slack connection and setup'''
