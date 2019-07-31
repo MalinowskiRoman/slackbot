@@ -11,8 +11,8 @@ x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
 
 
 def print_board1(board):
-    w = '\u25CE'
-    b = '\u25C9'
+    b = '\u25CE'
+    w = '\u25C9'
     print('\u22BF a| b|c|d| e|f|g |h')
 
     for index, line in enumerate(board):
@@ -184,26 +184,118 @@ def count_score(board):
 
 # returns the number of definitive coins for each side
 def definitive_coins(board_param):
-    board = copy.deepcopy(board_param)
-    black = 0
-    for move in corners:
-        x, y = move[0], move[1]
-        if board[x][y] == 1:
-            for i in range(8):
-                for j in range(8):
-                    if board[i][j] != 1:
-                        break
+    definitive = [[0 for i in range(8)] for j in range(8)]
 
-        elif board[x][y] == -1:
-            pass
+    # UL
+    lim1, lim2 = 8, 8
+    x, y = corners[0][0], corners[0][1]
+    val = board_param[x][y]
+    if val != 0:
+        while board_param[x][y] == val:
+            definitive[x][y] = val
+            for i in range(1, lim1):
+                if board_param[x+i][y] == val:
+                    definitive[x+i][y] = val
+                    continue
+                else:
+                    lim1 = i - 1
+                    break
+            for j in range(1, lim2):
+                if board_param[x][y+j] == val:
+                    definitive[x][y+j] = val
+                    continue
+                else:
+                    lim2 = i - 1
+                    break
+            if max(lim1, lim2) == 0:
+                break
+            x += 1
+            y += 1
 
-    return
+    # UR
+    lim1, lim2 = 8, 8
+    x, y = corners[1][0], corners[1][1]
+    val = board_param[x][y]
+    if val != 0:
+        while board_param[x][y] == val:
+            definitive[x][y] = val
+            for i in range(1, lim1):
+                if board_param[x + i][y] == val:
+                    definitive[x + i][y] = val
+                    continue
+                else:
+                    lim1 = i - 1
+                    break
+            for j in range(1, lim2):
+                if board_param[x][y - j] == val:
+                    definitive[x][y - j] = val
+                    continue
+                else:
+                    lim2 = i - 1
+                    break
+            if max(lim1, lim2) == 0:
+                break
+            x += 1
+            y -= 1
+
+    # DL
+    lim1, lim2 = 8, 8
+    x, y = corners[2][0], corners[2][1]
+    val = board_param[x][y]
+    if val != 0:
+        while board_param[x][y] == val:
+            definitive[x][y] = val
+            for i in range(1, lim1):
+                if board_param[x - i][y] == val:
+                    definitive[x - i][y] = val
+                    continue
+                else:
+                    lim1 = i - 1
+                    break
+            for j in range(1, lim2):
+                if board_param[x][y + j] == val:
+                    definitive[x][y + j] = val
+                    continue
+                else:
+                    lim2 = i - 1
+                    break
+            if max(lim1, lim2) == 0:
+                break
+            x -= 1
+            y += 1
+
+    # UR
+    lim1, lim2 = 8, 8
+    x, y = corners[3][0], corners[3][1]
+    val = board_param[x][y]
+    if val != 0:
+        while board_param[x][y] == val:
+            definitive[x][y] = val
+            for i in range(1, lim1):
+                if board_param[x - i][y] == val:
+                    definitive[x - i][y] = val
+                    continue
+                else:
+                    lim1 = i - 1
+                    break
+            for j in range(1, lim2):
+                if board_param[x][y - j] == val:
+                    definitive[x][y - j] = val
+                    continue
+                else:
+                    lim2 = i - 1
+                    break
+            if max(lim1, lim2) == 0:
+                break
+            x -= 1
+            y -= 1
+    return definitive
 
 
 # we calculate the score without looking who is the player and who is the computer
 # if the score is positive, is is good for the black team
 # if it is negative it is good for the white team
-def evaluate_score(board, team_val, turn_count, corner_value=10, x_c_value=10, possibility_value=1):
+def evaluate_score(board, team_val, turn_count, maximize, corner_value=10, x_c_value=10, possibility_value=1):
     score = 0
     # counting pieces
     for i in range(8):
@@ -218,7 +310,31 @@ def evaluate_score(board, team_val, turn_count, corner_value=10, x_c_value=10, p
 
     # adding weight to possibilities of move
     score += possibility_value * max(10 - turn_count, 0) * team_val * len(possible_moves(board, team_val))
-    return score * team_val
+    if maximize:
+        score = score * team_val
+    else:
+        score = - score * team_val
+    return score
+
+
+def compute_score(board, team_val, turn_count, maximize):
+    black, white = count_score(board)
+    disc_diff = 100 * (black - white) / (black + white)
+    black_move, white_move = len(possible_moves(board, 1)), len(possible_moves(board, -1))
+    move_diff = 100 * (black_move - white_move) / (black_move + white_move + 1)
+    black_corner = white_corner = 0
+    for corner in corners:
+        if board[corner[0]][corner[1]] == 1:
+            black_corner += 1
+        elif board[corner[0]][corner[1]] == -1:
+            white_corner += 1
+    corner_diff = 100 * (black_corner - white_corner) / (black_corner + white_corner + 1)
+    score = 2 * move_diff + disc_diff + 1000 * corner_diff
+    if maximize:
+        score = score * team_val
+    else:
+        score = - score * team_val
+    return score
 
 
 def alpha_beta(board_param, team_val, alpha, beta, depth, turn_count, corner_value=10, x_c_value=10, possibility_value=1, maximize=True):
@@ -226,7 +342,8 @@ def alpha_beta(board_param, team_val, alpha, beta, depth, turn_count, corner_val
     # the other team want to minimize this one, not maximizing it, even if
     # is equivalent in othello
     if depth == 0 or not possible_moves(board_param, team_val):
-        return evaluate_score(board_param, team_val, turn_count, corner_value, x_c_value, possibility_value)
+        # return evaluate_score(board_param, team_val, turn_count, maximize, corner_value, x_c_value, possibility_value)
+        return compute_score(board_param, team_val, turn_count, maximize)
     else:
         board = copy.deepcopy(board_param)
         if maximize:
@@ -302,11 +419,8 @@ def determine_alpha_beta(board_param, team_val, turn_count, corner_value=10, x_c
         if move in list_moves:
             return move
     score = []
-    print(list_moves)
     for move in list_moves:
         score += [alpha_beta(check_lines(move[0], move[1], board, team_val), team_val, - np.inf, np.inf, depth, turn_count + 1, corner_value, x_c_value, possibility_value, maximize=True)]
     score = [s * team_val for s in score]
-    print(list_moves)
-    print(score)
     return list_moves[score.index(max(score))]
 
