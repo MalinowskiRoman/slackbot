@@ -183,6 +183,7 @@ def count_score(board):
 
 
 # returns the number of definitive coins for each side
+# rhe flag bool detects if we got into the for loop or not
 def definitive_coins(board_param):
     definitive = [[0 for i in range(8)] for j in range(8)]
 
@@ -190,23 +191,33 @@ def definitive_coins(board_param):
     lim1, lim2 = 8, 8
     x, y = corners[0][0], corners[0][1]
     val = board_param[x][y]
+
     if val != 0:
         while board_param[x][y] == val:
             definitive[x][y] = val
+            flag = False
             for i in range(1, lim1):
+                flag = True
                 if board_param[x+i][y] == val:
                     definitive[x+i][y] = val
                     continue
                 else:
                     lim1 = i - 1
                     break
+            if not flag:
+                lim1 = 0
+            flag = False
+
             for j in range(1, lim2):
+                flag = True
                 if board_param[x][y+j] == val:
                     definitive[x][y+j] = val
                     continue
                 else:
                     lim2 = i - 1
                     break
+            if not flag:
+                lim2 = 0
             if max(lim1, lim2) == 0:
                 break
             x += 1
@@ -219,20 +230,30 @@ def definitive_coins(board_param):
     if val != 0:
         while board_param[x][y] == val:
             definitive[x][y] = val
+            flag = False
             for i in range(1, lim1):
+                flag = True
                 if board_param[x + i][y] == val:
                     definitive[x + i][y] = val
                     continue
                 else:
                     lim1 = i - 1
                     break
+            if not flag:
+                lim1 = 0
+            flag = False
+
             for j in range(1, lim2):
+                flag = True
                 if board_param[x][y - j] == val:
                     definitive[x][y - j] = val
                     continue
                 else:
                     lim2 = i - 1
                     break
+            if not flag:
+                lim2 = 0
+
             if max(lim1, lim2) == 0:
                 break
             x += 1
@@ -245,20 +266,31 @@ def definitive_coins(board_param):
     if val != 0:
         while board_param[x][y] == val:
             definitive[x][y] = val
+            flag = False
             for i in range(1, lim1):
+                flag = True
                 if board_param[x - i][y] == val:
                     definitive[x - i][y] = val
                     continue
                 else:
                     lim1 = i - 1
                     break
+            if not flag:
+                lim1 = 0
+            flag = False
+
             for j in range(1, lim2):
+                flag = True
                 if board_param[x][y + j] == val:
                     definitive[x][y + j] = val
                     continue
                 else:
                     lim2 = i - 1
                     break
+            if not flag:
+                lim2 = 0
+
+
             if max(lim1, lim2) == 0:
                 break
             x -= 1
@@ -270,25 +302,36 @@ def definitive_coins(board_param):
     val = board_param[x][y]
     if val != 0:
         while board_param[x][y] == val:
+            flag = False
             definitive[x][y] = val
             for i in range(1, lim1):
+                flag = True
                 if board_param[x - i][y] == val:
                     definitive[x - i][y] = val
                     continue
                 else:
                     lim1 = i - 1
                     break
+            if not flag:
+                lim1 = 0
+            flag = False
+
             for j in range(1, lim2):
+                flag = True
                 if board_param[x][y - j] == val:
                     definitive[x][y - j] = val
                     continue
                 else:
                     lim2 = i - 1
                     break
+            if not flag:
+                lim2 = 0
+
             if max(lim1, lim2) == 0:
                 break
             x -= 1
             y -= 1
+
     return definitive
 
 

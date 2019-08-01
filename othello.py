@@ -12,10 +12,11 @@ brain.load_state_dict(torch.load('models/against_Glutton.pt'))
 learning_AI = MLAgent('black', brain, optimizer=torch.optim.SGD(brain.parameters(), lr=0.01, momentum=0.9))
 alpha_beta_AI = AlphaBeta('white', depth=3)
 glutton_AI = Glutton('white')
+glutton_AI2 = Glutton('black')
 
 
 # player can be from classes AlphaBeta, Glutton, HumanPlayer
-def play_othello1(player1=alpha_beta_AI, player2=learning_AI, display=True):
+def play_othello1(player1=glutton_AI, player2=glutton_AI2, display=True):
     # white is -1
     # black is 1
 
