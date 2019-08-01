@@ -411,13 +411,11 @@ def alpha_beta(board_param, team_val, alpha, beta, depth, turn_count, corner_val
             return min_
 
 
-def determine_human(board_param, team_val):
-
+def determine_human(board, team_val):
     if team_val == 1:
         team = 'black'
     else:
         team = 'white'
-
     format_ok = False
     while not format_ok:
         print('\nTime for the ' + team + ' team to play !')
@@ -430,7 +428,7 @@ def determine_human(board_param, team_val):
             print('Use a format like "b7" !')
             continue
         if i in range(8) and j in range(8):
-            if is_move_possible(i, j, board_param, team_val):
+            if board.is_move_possible((i, j), team_val):
                 format_ok = True
             else:
                 print("You can't put it there")
@@ -439,20 +437,17 @@ def determine_human(board_param, team_val):
     return i, j
 
 
-def determine_glutton(board_param, team_val):
-    moves = possible_moves(board_param, team_val)
+def determine_glutton(board, team_val):
+    moves = board.possible_moves(team_val)
     score = []
     for move in moves:
-        black, white = count_score(check_lines(move[0], move[1], board_param, team_val))
+        black, white = board.execute_turn(move, team_val, in_place=False).count_score()
         if team_val == 1:
-            score += [black]
+            score.append(black)
         else:
-            score += [white]
-    try:
-        move = moves[score.index(max(score))]
-    except ValueError:
-        return 0, 0
-    return move[0], move[1]
+            score.append(white)
+    move = moves[score.index(max(score))]
+    return move
 
 
 def determine_alpha_beta(board_param, team_val, turn_count, corner_value=10, x_c_value=10, possibility_value=1, depth=3):
