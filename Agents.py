@@ -94,19 +94,16 @@ class Glutton(Player):
 
 
 class AlphaBeta(Player):
-	def __init__(self, team, depth, corner_value=10, x_c_value=10, possibility_value=1, maximize=True):
+	def __init__(self, team, depth, maximize=True):
 		super().__init__(team)
 		self.depth = depth
 		self.turn_count = 0
-		self.corner_value=corner_value
-		self.x_c_value = x_c_value
-		self.possibility_value = possibility_value
 		self.maximize = maximize
 		self.name = 'AlphaBeta'
 
 	def play(self, board):
 		self.turn_count += 2
-		return determine_alpha_beta(board, self.team_val, self.turn_count, self.corner_value, self.x_c_value, self.possibility_value, self.depth)
+		return determine_alpha_beta(board, self.team_val, self.turn_count, self.depth)
 
 	def reset(self):
 		self.turn_count = 0
