@@ -5,14 +5,14 @@ from Board import Board
 global corners
 corners = [(0, 0), (0, 7), (7, 0), (7, 7)]
 global c_square
-c_square = [(0, 1), (0, 7), (1, 0), (1, 7), (6, 0), (6, 7), (7, 1), (7, 6)]
+c_square = [(0, 1), (1, 0), (1, 7), (0, 6), (7, 1), (6, 0), (6, 7), (7, 6)]
 global x_square
-x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
+x_square = [(1, 1), (1, 6), (6, 1), (6, 6)]
 
 
 def compute_score(board, team_val, maximize):
-    black, white = board.count_score()
-    disc_diff = 100 * (black - white) / (black + white)
+    # black, white = board.count_score()
+    # disc_diff = 100 * (black - white) / (black + white)
 
     black_move, white_move = len(board.possible_moves(1)), len(board.possible_moves(-1))
     move_diff = 100 * (black_move - white_move) / (black_move + white_move + 1)
@@ -25,13 +25,30 @@ def compute_score(board, team_val, maximize):
             white_corner += 1
     corner_diff = 100 * (black_corner - white_corner) / (black_corner + white_corner + 1)
 
-    definitive = board.definitive_coins()
-    for move in x_square + c_square:
-        if definitive[move] != board[move]:
-            definitive.grid[move] = - board[move]
-    black_def, white_def = definitive.count_score()
-    def_diff = 100 * (black_def - white_def) / (black_def + white_def + 1)
-    score = 2 * move_diff + disc_diff + 1000 * corner_diff + 500 * def_diff
+    c_black = c_white = 0
+    for i, move in enumerate(c_square):
+        if board[move] == 1 and corners[i//2] != 1:
+            c_black += 1
+        if board[move] == -1 and corners[i//2] != -1:
+            c_white += 1
+    c_diff = 100 * (c_black - c_white) / (c_black + c_white + 1)
+
+    x_black = x_white = 0
+    for i, move in enumerate(x_square):
+        if board[move] == 1 and corners[i] != 1:
+            x_black += 1
+        if board[move] == -1 and corners[i] != -1:
+            x_white += 1
+    x_diff = 100 * (x_black - x_white) / (x_black + c_white + 1)
+
+    # definitive = board.definitive_coins()
+    # for move in x_square + c_square:
+    #     if definitive[move] != board[move]:
+    #         definitive.grid[move] = - board[move]
+    # black_def, white_def = definitive.count_score()
+    # def_diff = 100 * (black_def - white_def) / (black_def + white_def + 1)
+
+    score = 2 * move_diff + 100 * corner_diff - 100 * x_diff - 50 * c_diff
 
     if maximize:
         score = score * team_val
@@ -63,7 +80,8 @@ def evaluate_position(board, team_val, maximize):
         score = score * team_val
     return score
 
-def alpha_beta_brut(board, team_val, depth, maximize=True):
+
+def alpha_beta(board, team_val, depth, alpha, beta, maximize=True):
     # We have to return the score of the root team (in the algorithm
     # the other team want to minimize this one, not maximizing it, even if
     # is equivalent in othello
@@ -75,14 +93,20 @@ def alpha_beta_brut(board, team_val, depth, maximize=True):
         if maximize:
             max_ = - np.inf
             for move in board.possible_moves(team_val):
-                val = alpha_beta_brut(board.update(move, team_val, in_place=False), team_val, depth - 1, not maximize)
+                val = alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
                 max_ = max(max_, val)
+                alpha = max(alpha, max_)
+                if alpha >= beta:
+                    break
             return max_
         else:
             min_ = np.inf
             for move in board.possible_moves(team_val):
-                val = alpha_beta_brut(board.update(move, team_val, in_place=False), team_val, depth - 1, not maximize)
+                val = alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
                 min_ = min(min_, val)
+                beta = min(beta, min_)
+                if alpha >= beta:
+                    break
             return min_
 
 
@@ -112,9 +136,6 @@ def determine_human(board, team_val):
     return i, j
 
 
-
-
-
 def determine_alpha_beta(board, team_val, depth=3):
     list_moves = board.possible_moves(team_val)
     for move in corners:
@@ -122,6 +143,6 @@ def determine_alpha_beta(board, team_val, depth=3):
             return move
     score = []
     for move in list_moves:
-        score += [alpha_beta_brut(board.update(move, team_val, in_place=False), team_val, depth, maximize=True)]
+        score += [alpha_beta(board.update(move, team_val, in_place=False), team_val, depth, alpha=-np.inf, beta=np.inf, maximize=True)]
     print(list_moves, score)
     return list_moves[score.index(max(score))]
