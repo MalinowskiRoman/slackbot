@@ -12,7 +12,7 @@ from Agents import MLAgent, DiggingGlutton, Player, DenseBrain
 token = 'xoxp-684260139683-689311425137-684247936882-151caac50e5f63ad69b6272127ade6a3'
 bot_token = 'xoxb-684260139683-697808802582-aBdjKsw9s19ikbcFrtPpwEP7'
 
-channel_name = 'test_bot'
+channel_name = 'general'
 last_move = ''
 move = ''
 team = 'white'
@@ -134,8 +134,8 @@ def analyse_message(tok=token):
                         ' "help"')
         except IndexError:
             print('Pas de messages')
-        except KeyError:
-            print('Key Error')
+        except KeyError as err:
+            print(err)
 
     except Exception:
         print('COULD NOT FIND THE NAME OF THE CHANNEL')
@@ -179,8 +179,8 @@ class SlackPlayer(Player):
             except IndexError:
                 print('Pas de messages while othello')
                 return -1, -1
-            except KeyError:
-                print('Key Error while othello')
+            except KeyError as err:
+                print(err)
                 return -1, -1
 
 # def analyse_othello_move(team, tok=token):
