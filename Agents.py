@@ -1,8 +1,10 @@
+import copy
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from othello_functions import *
-
+from Board import Board, Game
 def convert_board(board, team):
 	"""
 	convert the boards to contain 0,1,2 index : 0 is empty, 1 is current team and 2 is other team
@@ -98,6 +100,59 @@ class MLAgent(Player):
 		self.reward_history = []
 		self.brain.zero_grad()
 
+	def train(self, adversaries, total_ep = 100, episode_length=64, path='models', save_name = 'against_glutton_and_self'):
+		n_ep = 0
+		n_games = 0
+		n_wins = 0
+		wins = [0 for adv in adversaries]
+		games = [0 for avd in adversaries]
+		while n_ep < total_ep:
+			ep_victories = 0
+			n_ep += 1
+			for ep in range(episode_length):
+				n_games += 1
+				k, adv = self.select_adversary(adversaries, wins, games, n_ep, path, save_name)
+				print(
+					'Episode {}, game {} : playing against {}... '.format(n_ep, n_games, adv),
+					end='')
+				games[k] += 1
+				game = Game(self, adv, display_mode=None)
+				black, white = game.rollout()
+				win = (white - black > 0)
+				wins[k] += win
+				ep_victories += win
+				n_wins += win
+				self.next_game(white - black)
+				print('Win :)' if win else 'Lost :(')
+			to_disp = []
+			template = ''
+			for i in range(len(wins)):
+				to_disp.append(adversaries[i])
+				to_disp.append(wins[i])
+				to_disp.append(games[i])
+				template += '{}: {}/{} | '
+			template += 'Total : {totwin}/{total}'
+			self.learn()
+			print('\nEpisode {} finished, {} victories'.format(n_ep, ep_victories))
+			print(template.format(*to_disp, totwin=n_wins, total=n_games))
+			self.reset()
+			torch.save(self.brain.state_dict(), os.path.join(path, '{}_{}.pt'.format(save_name, n_ep)))
+
+	def select_adversary(self, adversaries, wins, games, nb_ep, path, save_name):
+		distrib = np.array(
+			[(games[i] - wins[i]) / (games[i] + 1) ** 2 + 1 / (2 ** i) for i in range(len(adversaries))])
+		distrib /= np.sum(distrib)
+		i = np.where(np.random.multinomial(1, distrib) == 1)[0][0]
+		adv = adversaries[i]
+		if adv == 'self':
+			adv_brain = copy.deepcopy(self.brain)
+			if nb_ep > 1:
+				n_adv = np.random.randint(max(1, nb_ep - 4), nb_ep)
+				adv_brain.load_state_dict(torch.load(os.path.join(path, '{}_{}.pt'.format(save_name, n_adv))))
+			adv_brain.eval()
+			adv = MLAgent(adv_brain)
+		return i, adv
+
 
 class Glutton(Player):
 	def __init__(self, team=None):
@@ -116,10 +171,11 @@ class Glutton(Player):
 		move = moves[score.index(max(score))]
 		return move
 
+
 class DiggingGlutton(Player):
 	def __init__(self, team=None, depth=2):
 		super().__init__(team)
-		self.name = 'Glutton'
+		self.name = 'Glutton {}'.format(depth)
 		self.depth=depth
 
 	def play(self, board):
@@ -161,8 +217,6 @@ class DiggingGlutton(Player):
 		return best_move, best_score
 
 
-
-
 class AlphaBeta(Player):
 
 	def __init__(self, depth, team=None, maximize=True):
@@ -187,3 +241,6 @@ class HumanPlayer(Player):
 
 	def play(self, board):
 		return determine_human(board, self.team_val)
+
+
+

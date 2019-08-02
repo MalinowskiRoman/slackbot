@@ -121,8 +121,8 @@ def determine_human(board, team_val):
         team = 'white'
     format_ok = False
     while not format_ok:
-        print('\nTime for the ' + team + ' team to play !')
-        txt = input('Where do you want to place a pawn ?\n\n')
+        print('Time for the ' + team + ' team to play !')
+        txt = input('Where do you want to place a pawn ?\n')
         print('')
         try:
             j = ord(txt[0].lower()) - ord('a')
@@ -138,8 +138,6 @@ def determine_human(board, team_val):
         else:
             print('Use a format like "b7" !')
     return i, j
-
-
 
 
 

@@ -82,13 +82,35 @@ def analyse_message(tok=token):
                         m = f.readline()
                         write_message(n + m)
                 elif 'play othello' in text.lower():
-                    with open('C:/Users/roman/Desktop/othello.txt', 'w') as f:
+                    with open('othello.txt', 'w') as f:
                         f.writelines(last_message['user'] + '\n')
-                    write_message('Deuxième joueur ? (Ecrire othello joueur 2)')
+                    if text.lower() == 'play othello':
+                        write_message('Deuxième joueur ? (Ecrire othello joueur 2')
+                    else:
+                        if 'glutton' in text.lower():
+                            k = int(text.lower()[text.lower().find('glutton') + 8])
+                            player2 = DiggingGlutton(depth=k)
+                        if 'learning' in text.lower():
+                            brain = DenseBrain(128)
+                            brain.load_state_dict(torch.load('models/against_glutton_and_self_125.pt'))
+                            player2 = MLAgent(brain)
+                        player1 = SlackPlayer(last_message['user'])
+                        board = Board(display_mode='advanced')
+                        game = Game(player1, player2, board=board, display_func=write_message)
+                        game.rollout()
+
                 elif 'othello joueur 2' in text.lower():
-                    with open('C:/Users/roman/Desktop/othello.txt', 'a') as f:
+                    with open('othello.txt', 'a') as f:
                         f.writelines(last_message['user'])
-                    play_othello()
+                    with open('othello.txt', 'r') as f:
+                        player1 = f.readline()[:-1]
+                        player2 = f.readline()
+                    board = Board(display_mode='advanced')
+                    player1 = SlackPlayer(player1)
+                    player2 = SlackPlayer(player2)
+                    game = Game(player1, player2, board=board, display_func=write_message)
+                    game.rollout()
+
                 elif 'help' in text.lower():
                     write_message(
                         'Petit rappel des commandes :\nPour que je recopie bizarrement votre message, écrivez "@Bob'
@@ -105,65 +127,102 @@ def analyse_message(tok=token):
         print('COULD NOT FIND THE NAME OF THE CHANNEL')
         # print(history)
 
+class SlackPlayer(Player):
+    def __init__(self, user, team=None):
+        super().__init__(team)
+        self.name = user
 
-
-def analyse_othello_move(team, tok=token):
-    history = get_history_channel(tok)
-    try:
-        last_message = history['messages'][0]
-        try:
-            last_message['bot_id']
-        except:
-            user = last_message['user']
-            with open('C:/Users/roman/Desktop/othello.txt', 'r') as f:
-                player1 = f.readline()[:-1]
-                player2 = f.readline()
-            if team == 'white':
-                player_username = player1
-            else:
-                player_username = player2
-            # la partie qui nous interesse
-            text = last_message['text']
-            if len(text) == 2:
-                if user != player_username:
-                    write_message("C'est pas à toi de jouer wesh")
+    def play(self, board):
+        history = get_history_channel(tok)
+        write_message('\nTeam ' + self.team + ', where do you want to place a pawn ?\n')
+        while True:
+            try:
+                last_message = history['messages'][0]
                 try:
-                    j = ord(text[0].lower()) - ord('a')
-                    i = int(text[1]) - 1
-                    global move
-                    move = text
-                    return i, j
+                    last_message['bot_id']
                 except:
-                    write_message('Use a format like "b7" !')
-            elif 'quit' in text:
-                return 'quit', 0
-        return -1, -1
-    except IndexError:
-        print('Pas de messages while othello')
-        return -1, -1
-    except KeyError:
-        print('Key Error while othello')
-        return -1, -1
+                    user = last_message['user']
+                    if user != self.name:
+                        write_message("C'est pas à toi de jouer wesh")
+                    else:
+                        # la partie qui nous interesse
+                        text = last_message['text']
+                        if len(text) == 2:
+                            try:
+                                j = ord(text[0].lower()) - ord('a')
+                                i = int(text[1]) - 1
+                                if board.is_move_possible((i,j), self.team_val):
+                                    return i, j
+                                else:
+                                    write_message('You can\'t put it there!')
+                            except:
+                                write_message('Use a format like "b7" !')
+                        elif 'quit' in text:
+                            return 'quit', 0
+            except IndexError:
+                print('Pas de messages while othello')
+                return -1, -1
+            except KeyError:
+                print('Key Error while othello')
+                return -1, -1
 
-
-def print_board(board):
-    numbers = ["one1", "two1", "three1", "four1", "five1", "six1", "seven1", "eight1"]
-    w = ':white_pawn:'
-    b = ':black_pawn:'
-    li = ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
-
-    for index, line in enumerate(board):
-        li += ':' + numbers[index] + ':'
-        for i in line:
-            if i == -1:
-                li += w
-            elif i == 1:
-                li += b
-            else:
-                li += ':white_grid:'
-        li += ':' + numbers[index] + ':'+'\n'
-    li += ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
-    write_message(li)
+# def analyse_othello_move(team, tok=token):
+#     history = get_history_channel(tok)
+#     try:
+#         last_message = history['messages'][0]
+#         try:
+#             last_message['bot_id']
+#         except:
+#             user = last_message['user']
+#             with open('C:/Users/roman/Desktop/othello.txt', 'r') as f:
+#                 player1 = f.readline()[:-1]
+#                 player2 = f.readline()
+#             if team == 'white':
+#                 player_username = player1
+#             else:
+#                 player_username = player2
+#             # la partie qui nous interesse
+#             text = last_message['text']
+#             if len(text) == 2:
+#                 if user != player_username:
+#                     write_message("C'est pas à toi de jouer wesh")
+#                 try:
+#                     j = ord(text[0].lower()) - ord('a')
+#                     i = int(text[1]) - 1
+#                     global move
+#                     move = text
+#                     return i, j
+#                 except:
+#                     write_message('Use a format like "b7" !')
+#             elif 'quit' in text:
+#                 return 'quit', 0
+#         return -1, -1
+#     except IndexError:
+#         print('Pas de messages while othello')
+#         return -1, -1
+#     except KeyError:
+#         print('Key Error while othello')
+#         return -1, -1
+#
+#
+# def print_board(board):
+#     numbers = ["one1", "two1", "three1", "four1", "five1", "six1", "seven1", "eight1"]
+#     w = ':white_pawn:'
+#     b = ':black_pawn:'
+#     li = ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
+#
+#     for index, line in enumerate(board):
+#         li += ':' + numbers[index] + ':'
+#         for i in line:
+#             if i == -1:
+#                 li += w
+#             elif i == 1:
+#                 li += b
+#             else:
+#                 li += ':white_grid:'
+#         li += ':' + numbers[index] + ':'+'\n'
+#     li += ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
+#     write_message(li)
 
 
 def update_counter(name):
@@ -184,57 +243,55 @@ def update_counter(name):
         f.writelines(n + m)
 
 
-def play_othello():
-    # white is -1
-    # black is 1
-    board = [[0 for i in range(8)] for j in range(8)]
-    board[3][3] = board[4][4] = 1
-    board[4][3] = board[3][4] = -1
-    global team
-    team = 'white'
-    pos = -1
-    while True:
-        format_ok = False
-        while not format_ok:
-            print_board(board)
-            write_message('\nTeam ' + team + ', where do you want to place a pawn ?\n\n')
-            write_message('')
-            global move
-            global last_move
-            while move == last_move:
-                i, j = analyse_othello_move(team)
-                if i > -1:
-                    last_move = move
-                    break
-                if i == 'quit':
-                    black, white = count_score(board)
-                    print_board(board)
-                    write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
-                    return 0
-            if i in range(8) and j in range(8):
-                if is_move_possible(i, j, board, pos):
-                    format_ok = True
-                    # print(format_ok)
-                    continue
-                else:
-                    write_message("You can't put it there")
-        next_move, board = execute_turn(i, j, board, pos)
-        if next_move:
-            if team == 'white':
-                team = 'black'
-            else:
-                team = 'white'
-            pos = - pos
-            continue
-        elif possible_moves(board, pos) == []:
-            print('No possible moves !')
-            break
-        else:
-            continue
-    black, white = count_score(board)
-    print_board(board)
-    write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
-    return 0
+# def play_othello():
+#     # white is -1
+#     # black is 1
+#     board = Board()
+#     global team
+#     team = 'white'
+#     pos = -1
+#     while True:
+#         format_ok = False
+#         while not format_ok:
+#             print_board(board)
+#             write_message('\nTeam ' + team + ', where do you want to place a pawn ?\n')
+#             write_message('')
+#             global move
+#             global last_move
+#             while move == last_move:
+#                 i, j = analyse_othello_move(team)
+#                 if i > -1:
+#                     last_move = move
+#                     break
+#                 if i == 'quit':
+#                     black, white = count_score(board)
+#                     print_board(board)
+#                     write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
+#                     return 0
+#             if i in range(8) and j in range(8):
+#                 if is_move_possible(i, j, board, pos):
+#                     format_ok = True
+#                     # print(format_ok)
+#                     continue
+#                 else:
+#                     write_message("You can't put it there")
+#         next_move, board = execute_turn(i, j, board, pos)
+#         if next_move:
+#             if team == 'white':
+#                 team = 'black'
+#             else:
+#                 team = 'white'
+#             pos = - pos
+#             continue
+#         elif possible_moves(board, pos) == []:
+#             print('No possible moves !')
+#             break
+#         else:
+#             continue
+#     black, white = count_score(board)
+#     print_board(board)
+#     write_message('Final score : \nWhite Team : ' + str(white) + '\nBlack Team : ' + str(black))
+#     return 0
 
 
 '''Slack connection and setup'''
