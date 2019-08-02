@@ -55,13 +55,13 @@ class Player:
 
 
 class MLAgent(Player):
-	def __init__(self, brain, optimizer=None, team=None):
+	def __init__(self, brain, optimizer=None, team=None, name=None):
 		super().__init__(team)
 		self.brain = brain
 		self.optimizer = optimizer
 		self.move_history = [[]]
 		self.reward_history = []
-		self.name = 'LearningAI'
+		self.name = 'LearningAI' if not name else name
 
 	def play(self, board):
 		valid_moves = board.possible_moves(self.team_val)
@@ -101,6 +101,7 @@ class MLAgent(Player):
 		self.brain.zero_grad()
 
 	def train(self, adversaries, total_ep = 100, episode_length=64, path='models', save_name = 'against_glutton_and_self'):
+		self.brain.train()
 		n_ep = 0
 		n_games = 0
 		n_wins = 0
@@ -113,17 +114,17 @@ class MLAgent(Player):
 				n_games += 1
 				k, adv = self.select_adversary(adversaries, wins, games, n_ep, path, save_name)
 				print(
-					'Episode {}, game {} : playing against {}... '.format(n_ep, n_games, adv),
+					'\rEpisode {}, game {} : playing against {}... '.format(n_ep, n_games, adv),
 					end='')
 				games[k] += 1
-				game = Game(self, adv, display_mode=None)
+				game = Game(self, adv, display_func=None)
 				black, white = game.rollout()
 				win = (white - black > 0)
 				wins[k] += win
 				ep_victories += win
 				n_wins += win
 				self.next_game(white - black)
-				print('Win :)' if win else 'Lost :(')
+#				print('Win :)' if win else 'Lost :(')
 			to_disp = []
 			template = ''
 			for i in range(len(wins)):
