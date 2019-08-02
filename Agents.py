@@ -1,10 +1,17 @@
 import copy
 import os
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from Board import Board, Game
 
+global corners
+corners = [(0, 0), (0, 7), (7, 0), (7, 7)]
+global c_square
+c_square = [(0, 1), (0, 7), (1, 0), (1, 7), (6, 0), (6, 7), (7, 1), (7, 6)]
+global x_square
+x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
 
 def convert_board(board, team):
 	"""
