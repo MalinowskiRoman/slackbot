@@ -1,6 +1,13 @@
 import numpy as np
 import copy
 
+global corners
+corners = [(0, 0), (0, 7), (7, 0), (7, 7)]
+global c_square
+c_square = [(0, 1), (0, 7), (1, 0), (1, 7), (6, 0), (6, 7), (7, 1), (7, 6)]
+global x_square
+x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
+
 class Board:
 	directions = [(0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
 
@@ -87,3 +94,167 @@ class Board:
 					li += '\u25A2' + '|'
 			print(li)
 		print(' ' + '\u203E' * 16)
+
+	# returns the number of definitive coins for each side
+	# rhe flag bool detects if we got into the for loop or not
+	def definitive_coins(self):
+		definitive = Board()
+		definitive.grid[3,3] = definitive.grid[4,4] = 0
+		definitive.grid[3,4] = definitive.grid[4,3] = 0
+
+		# UL
+		lim1, lim2 = 8, 8
+		x, y = corners[0][0], corners[0][1]
+		val = self[x, y]
+
+		if val != 0:
+			while self[x, y] == val:
+				definitive.grid[x, y] = val
+				flag = False
+				for i in range(1, lim1):
+					flag = True
+					if self[x + i, y] == val:
+						definitive.grid[x + i, y] = val
+						continue
+					else:
+						lim1 = i - 1
+						break
+				if not flag:
+					lim1 = 0
+
+				flag = False
+				for j in range(1, lim2):
+					flag = True
+					if self[x, y + j] == val:
+						definitive.grid[x, y+ j] = val
+						continue
+					else:
+						lim2 = j - 1
+						break
+
+				if not flag:
+					lim2 = 0
+
+				lim1 -= 1
+				lim2 -= 1
+				if min(lim1, lim2) <= 0:
+					break
+				x += 1
+				y += 1
+
+		# UR
+		lim1, lim2 = 8, 8
+		x, y = corners[1][0], corners[1][1]
+		val = self[x, y]
+
+		if val != 0:
+			while self[x, y] == val:
+				definitive.grid[x, y] = val
+				flag = False
+				for i in range(1, lim1):
+					flag = True
+					if self[x + i, y] == val:
+						definitive.grid[x + i, y] = val
+						continue
+					else:
+						lim1 = i - 1
+						break
+				if not flag:
+					lim1 = 0
+
+				flag = False
+				for j in range(1, lim2):
+					flag = True
+					if self[x, y - j] == val:
+						definitive.grid[x, y - j] = val
+						continue
+					else:
+						lim2 = j - 1
+						break
+				if not flag:
+					lim2 = 0
+
+				lim1 -= 1
+				lim2 -= 1
+				if min(lim1, lim2) <= 0:
+					break
+				x += 1
+				y -= 1
+
+		# DL
+		lim1, lim2 = 8, 8
+		x, y = corners[2][0], corners[2][1]
+		val = self[x, y]
+		if val != 0:
+			while self[x, y] == val:
+				definitive.grid[x, y] = val
+				flag = False
+				for i in range(1, lim1):
+					flag = True
+					if self[x - i, y] == val:
+						definitive.grid[x - i, y] = val
+						continue
+					else:
+						lim1 = i - 1
+						break
+				if not flag:
+					lim1 = 0
+				flag = False
+
+				for j in range(1, lim2):
+					flag = True
+					if self[x, y + j] == val:
+						definitive.grid[x, y + j] = val
+						continue
+					else:
+						lim2 = j - 1
+						break
+				if not flag:
+					lim2 = 0
+
+				lim1 -= 1
+				lim2 -= 1
+				if min(lim1, lim2) <= 0:
+					break
+				x -= 1
+				y += 1
+
+		# UR
+		lim1, lim2 = 8, 8
+		x, y = corners[3][0], corners[3][1]
+		val = self[x, y]
+		if val != 0:
+			while self[x, y] == val:
+				flag = False
+				definitive.grid[x, y] = val
+				for i in range(1, lim1):
+					flag = True
+					if self[x - i, y] == val:
+						definitive.grid[x - i, y] = val
+						continue
+					else:
+						lim1 = i - 1
+						break
+				if not flag:
+					lim1 = 0
+				flag = False
+
+				for j in range(1, lim2):
+					flag = True
+					if self[x, y - j] == val:
+						definitive.grid[x, y - j] = val
+						continue
+					else:
+						lim2 = j - 1
+						break
+				if not flag:
+					lim2 = 0
+
+				lim1 -= 1
+				lim2 -= 1
+				if min(lim1, lim2) <= 0:
+					break
+				x -= 1
+				y -= 1
+
+		return definitive
