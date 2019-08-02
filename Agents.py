@@ -244,6 +244,34 @@ class AlphaBeta(Player):
 			score += [board.update(move, self.team_val, in_place=False).alpha_beta(self.team_val, self.depth, alpha=-np.inf, beta=np.inf, maximize=True)]
 		return list_moves[score.index(max(score))]
 
+	def alpha_beta(self, board, team_val, depth, alpha, beta, maximize=True):
+		# We have to return the score of the root team (in the algorithm
+		# the other team want to minimize this one, not maximizing it, even if
+		# is equivalent in othello
+		if depth == 0 or not board.possible_moves(team_val):
+			# return evaluate_score(board_param, team_val, turn_count, maximize)
+			return board.compute_score(team_val, maximize)
+		else:
+			team_val = - team_val
+			if maximize:
+				max_ = - np.inf
+				for move in board.possible_moves(team_val):
+					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
+					max_ = max(max_, val)
+					alpha = max(alpha, max_)
+					if alpha >= beta:
+						break
+				return max_
+			else:
+				min_ = np.inf
+				for move in board.possible_moves(team_val):
+					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
+					min_ = min(min_, val)
+					beta = min(beta, min_)
+					if alpha >= beta:
+						break
+				return min_
+
 	def reset(self):
 		self.turn_count = 0
 
