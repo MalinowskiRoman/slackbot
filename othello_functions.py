@@ -112,17 +112,7 @@ def determine_human(board, team_val):
     return i, j
 
 
-def determine_glutton(board, team_val):
-    moves = board.possible_moves(team_val)
-    score = []
-    for move in moves:
-        black, white = board.execute_turn(move, team_val, in_place=False).count_score()
-        if team_val == 1:
-            score.append(black)
-        else:
-            score.append(white)
-    move = moves[score.index(max(score))]
-    return move
+
 
 
 def determine_alpha_beta(board, team_val, depth=3):
