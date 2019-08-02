@@ -152,7 +152,9 @@ class SlackPlayer(Player):
         write_message('\nTeam ' + self.team + ', where do you want to place a pawn ?\n')
         while True:
             try:
+                time.sleep(1)
                 history = get_history_channel(token)
+                print(history)
                 last_message = history['messages'][0]
                 try:
                     last_message['bot_id']

@@ -2,7 +2,6 @@
 import copy
 import numpy as np
 import torch
-from othello_functions import *
 from Agents import MLAgent, DenseBrain, HumanPlayer, Glutton, AlphaBeta, DiggingGlutton
 from Board import Board, Game
 

@@ -3,8 +3,9 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from othello_functions import *
 from Board import Board, Game
+
+
 def convert_board(board, team):
 	"""
 	convert the boards to contain 0,1,2 index : 0 is empty, 1 is current team and 2 is other team
@@ -227,11 +228,19 @@ class AlphaBeta(Player):
 		self.name = 'AlphaBeta'
 
 	def play(self, board):
-		self.turn_count += 2
-		return determine_alpha_beta(board, self.team_val, self.depth)
+		list_moves = board.possible_moves(self.team_val)
+		for move in corners:
+			if move in list_moves:
+				return move
+		score = []
+		for move in list_moves:
+			score += [board.update(move, self.team_val, in_place=False).alpha_beta(self.team_val, self.depth, alpha=-np.inf, beta=np.inf, maximize=True)]
+		return list_moves[score.index(max(score))]
 
 	def reset(self):
 		self.turn_count = 0
+
+
 
 
 class HumanPlayer(Player):
@@ -240,7 +249,27 @@ class HumanPlayer(Player):
 		self.name = 'Human'
 
 	def play(self, board):
-		return determine_human(board, self.team_val)
-
-
+		if self.team_val == 1:
+			team = 'black'
+		else:
+			team = 'white'
+		format_ok = False
+		while not format_ok:
+			print('\nTime for the ' + team + ' team to play !')
+			txt = input('Where do you want to place a pawn ?\n\n')
+			print('')
+			try:
+				j = ord(txt[0].lower()) - ord('a')
+				i = int(txt[1]) - 1
+			except:
+				print('Use a format like "b7" !')
+				continue
+			if i in range(8) and j in range(8):
+				if board.is_move_possible((i, j), self.team_val):
+					format_ok = True
+				else:
+					print("You can't put it there")
+			else:
+				print('Use a format like "b7" !')
+		return i, j
 
