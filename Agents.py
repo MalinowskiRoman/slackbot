@@ -13,10 +13,10 @@ def convert_board(board, team):
 		idx = {-1: 1, 0: 0, 1:2}
 	elif team == 1:
 		idx = {-1: 2, 0: 0, 1: 1}
-	return torch.LongTensor([idx[board[i].item()] for i in range(64)])
+	return torch.LongTensor([[idx[board[i][j]] for i in range(8)] for j in range(8)])
 
 
-class Brain(nn.Module):
+class DenseBrain(nn.Module):
 	def __init__(self, hidden_size):
 		super().__init__()
 		self.embeds = nn.Embedding(3, 3)
@@ -26,11 +26,16 @@ class Brain(nn.Module):
 	def forward(self, board):
 		embedded_board = self.embeds(board).view(-1)
 		scores = self.layer2(F.relu(self.layer1(embedded_board)))
-		return scores
+		return F.log_softmax(scores, dim=0)
+
+# class ConvBrain(nn.Module):
+# 	def __init__(self):
+# 		super().__init__()
+# 		self.
 
 class Player:
-	def __init__(self, team):
-		self.team_val = -1 if team =='white' else 1
+	def __init__(self, team=None):
+		self.team_val = -1 if team =='white' else 1 if team == 'black' else None
 		self.team = team
 		self.name = 'Player'
 
@@ -40,52 +45,61 @@ class Player:
 	def __str__(self):
 		return self.name
 
+	def set_team(self, team):
+		assert team in ['white', 'black']
+		self.team = team
+		self.team_val = -1 if team == 'white' else 1
+
 
 class MLAgent(Player):
-	def __init__(self, team, brain, optimizer):
+	def __init__(self, brain, optimizer, team=None):
 		super().__init__(team)
 		self.brain = brain
 		self.optimizer = optimizer
-		self.history = []
+		self.move_history = [[]]
+		self.reward_history = []
 		self.name = 'LearningAI'
 
 	def play(self, board):
-		valid_moves = possible_moves(board, self.team_val)
-		if not valid_moves:
-			print('No moves')
-			return 0, 0
-		flat_board = convert_board(torch.LongTensor(board).flatten(), self.team_val)
-		scores = self.brain(flat_board)
-		flat_valid = torch.LongTensor([8 * x + y for x, y in valid_moves])
-		valid_scores = ((-10000)*torch.ones(64)).scatter(0, flat_valid, scores)
-		try:
-			move = torch.multinomial(F.softmax(valid_scores, dim=0), 1).item()
-		except RuntimeError as er:
-			print_board1(board)
-			print(scores)
-			print(valid_scores)
-			raise er
-		self.history.append((scores, move))
-		return move // 8, move % 8
+		valid_moves = board.possible_moves(self.team_val)
+		valid = torch.zeros(64).scatter(0, torch.LongTensor([8*x+y for x,y in valid_moves]), 1).type(torch.ByteTensor)
+		board = convert_board(board, self.team_val)
+		scores = self.brain(board)
+		scores = torch.where(valid, scores, torch.full((64,), -1000))
+		sampler = torch.distributions.categorical.Categorical(logits=scores)
+		move = sampler.sample()
+		self.move_history[-1].append(sampler.log_prob(move).unsqueeze(0))
+		return move.item() // 8, move.item() % 8
 
-	def compute_gradients(self, score):
-		for distribution, move in self.history:
-			out_grad = torch.zeros(64)
-			out_grad[move] = score
-			distribution.backward(out_grad/len(self.history))
+	def compute_gradients(self):
+		self.brain.zero_grad()
+		self.reward_history = torch.FloatTensor(self.reward_history)
+		self.reward_history -= self.reward_history.mean()
+		self.reward_history /= self.reward_history.std()
+		loss = torch.Tensor([0.])
+		for i in range(len(self.reward_history)):
+			moves = torch.cat(tuple(self.move_history[i]), dim=0)
+			loss -= torch.sum(moves) * self.reward_history[i]
+		loss /= len(self.reward_history)
+		loss.backward()
 
 	def learn(self):
+		self.compute_gradients()
 		torch.nn.utils.clip_grad_norm_(self.brain.parameters(), 10)
 		self.optimizer.step()
-		self.brain.zero_grad()
+
+	def next_game(self, score):
+		self.reward_history.append(score)
+		self.move_history.append([])
 
 	def reset(self):
-		self.history = []
+		self.move_history = [[]]
+		self.reward_history = []
 		self.brain.zero_grad()
 
 
 class Glutton(Player):
-	def __init__(self, team):
+	def __init__(self, team=None):
 		super().__init__(team)
 		self.name = 'Glutton'
 
@@ -94,7 +108,8 @@ class Glutton(Player):
 
 
 class AlphaBeta(Player):
-	def __init__(self, team, depth, maximize=True):
+
+	def __init__(self, depth, team=None, maximize=True):
 		super().__init__(team)
 		self.depth = depth
 		self.turn_count = 0
@@ -110,7 +125,7 @@ class AlphaBeta(Player):
 
 
 class HumanPlayer(Player):
-	def __init__(self, team):
+	def __init__(self, team=None):
 		super().__init__(team)
 		self.name = 'Human'
 
