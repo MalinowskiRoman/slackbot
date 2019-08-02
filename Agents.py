@@ -17,15 +17,16 @@ def convert_board(board, team):
 
 
 class DenseBrain(nn.Module):
-	def __init__(self, hidden_size):
+	def __init__(self, hidden_size, dropout=0):
 		super().__init__()
 		self.embeds = nn.Embedding(3, 3)
 		self.layer1 = nn.Linear(3 * 64, hidden_size)
+		self.drop = nn.Dropout(dropout)
 		self.layer2 = nn.Linear(hidden_size, 64)
 
 	def forward(self, board):
 		embedded_board = self.embeds(board).view(-1)
-		scores = self.layer2(F.relu(self.layer1(embedded_board)))
+		scores = self.layer2(F.relu(self.drop(self.layer1(embedded_board))))
 		return F.log_softmax(scores, dim=0)
 
 # class ConvBrain(nn.Module):
@@ -52,7 +53,7 @@ class Player:
 
 
 class MLAgent(Player):
-	def __init__(self, brain, optimizer, team=None):
+	def __init__(self, brain, optimizer=None, team=None):
 		super().__init__(team)
 		self.brain = brain
 		self.optimizer = optimizer
@@ -104,7 +105,62 @@ class Glutton(Player):
 		self.name = 'Glutton'
 
 	def play(self, board):
-		return determine_glutton(board, self.team_val)
+		moves = board.possible_moves(self.team_val)
+		score = []
+		for move in moves:
+			black, white = board.execute_turn(move, self.team_val, in_place=False).count_score()
+			if self.team_val == 1:
+				score.append(black)
+			else:
+				score.append(white)
+		move = moves[score.index(max(score))]
+		return move
+
+class DiggingGlutton(Player):
+	def __init__(self, team=None, depth=2):
+		super().__init__(team)
+		self.name = 'Glutton'
+		self.depth=depth
+
+	def play(self, board):
+		move, _ = self.get_score(board, self.depth)
+		return move
+
+	def get_score(self, board, depth=2):
+#		print('Depth : {}'.format(depth))
+		best_score = -64
+		my_moves = board.possible_moves(self.team_val)
+#		print('My Moves : ' + str(my_moves))
+		if not my_moves:
+			return None, -64
+		best_move = my_moves[0]
+		for move in my_moves:
+#			print('Testing move {} on board'.format(move))
+#			board.print()
+			dboard = board.execute_turn(move, self.team_val, in_place=False)
+			if depth == 0:
+				black, white = dboard.count_score()
+				min_score = (black - white) * self.team_val
+			else:
+				min_score = 64
+				adv_moves = dboard.possible_moves(-self.team_val)
+#				print('His moves : {}'.format(adv_moves))
+				for adv_move in adv_moves:
+#					print('Assuming he plays {} on board'.format(adv_move))
+#					dboard.print()
+					ddboard = dboard.execute_turn(adv_move, -self.team_val, in_place=False)
+					_, score = self.get_score(ddboard, depth=depth-1)
+					min_score = min(min_score, score)
+				if not adv_moves:
+					_, min_score = self.get_score(dboard, depth=depth-1)
+#			print('------------------------Min score for move {} is {}----------------------------'.format(move, min_score))
+			if min_score >= best_score:
+				best_move = move
+				best_score = min_score
+#		print('------------------------Max score is {}----------------------------'.format(best_score))
+		return best_move, best_score
+
+
 
 
 class AlphaBeta(Player):
