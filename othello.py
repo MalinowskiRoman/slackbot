@@ -13,7 +13,8 @@ brain = DenseBrain(128)
 
 
 learning_AI = MLAgent(brain, optimizer=torch.optim.SGD(brain.parameters(), lr=0.01))
-alpha_beta_AI = AlphaBeta(depth=3)
+alpha_beta_AI = AlphaBeta(depth=2)
+alpha_beta_AI2 = AlphaBeta(depth=2)
 glutton_AI = Glutton()
 glutton_AI2 = Glutton()
 human = HumanPlayer()
@@ -75,6 +76,4 @@ def play_othello1(player1, player2, display=True):
 #     learning_AI.reset()
 #     torch.save(brain.state_dict(), 'models/against_Glutton.pt')
 
-
-play_othello1(glutton_AI, glutton_AI2, display=True)
-
+play_othello1(alpha_beta_AI, alpha_beta_AI2, display=True)
