@@ -228,7 +228,7 @@ class AlphaBeta(Player):
 
 	def play(self, board):
 		self.turn_count += 2
-		return determine_alpha_beta(board, self.team_val, self.turn_count, self.depth)
+		return determine_alpha_beta(board, self.team_val, self.depth)
 
 	def reset(self):
 		self.turn_count = 0

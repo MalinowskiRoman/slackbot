@@ -12,8 +12,10 @@ brain = DenseBrain(hidden_size, dropout=0.4)
 brain.load_state_dict(torch.load('models/against_glutton_and_self_125.pt'))
 
 learning_AI = MLAgent(brain, optimizer=torch.optim.SGD(brain.parameters(), lr=0.01))
-alpha_beta = AlphaBeta(depth=3)
-glutton = Glutton()
+alpha_beta_AI = AlphaBeta(depth=2)
+alpha_beta_AI2 = AlphaBeta(depth=2)
+glutton_AI = Glutton()
+glutton_AI2 = Glutton()
 human = HumanPlayer()
 dig_glutton = DiggingGlutton(depth=2)
 
