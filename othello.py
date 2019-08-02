@@ -4,20 +4,22 @@ import numpy as np
 import torch
 from othello_functions import *
 from Agents import MLAgent, DenseBrain, HumanPlayer, Glutton, AlphaBeta, DiggingGlutton
-from Board import Board
+from Board import Board, Game
 
 hidden_size = 128
 
-# brain = DenseBrain(hidden_size, dropout=0.4)
-# brain.load_state_dict(torch.load('models/against_glutton_and_self_17.pt'))
-#
-# learning_AI = MLAgent(brain, optimizer=torch.optim.SGD(brain.parameters(), lr=0.01))
+brain = DenseBrain(hidden_size, dropout=0.4)
+brain.load_state_dict(torch.load('models/against_glutton_and_self_125.pt'))
+
+learning_AI = MLAgent(brain, optimizer=torch.optim.SGD(brain.parameters(), lr=0.01))
+
 alpha_beta_AI = AlphaBeta(depth=2)
 alpha_beta_AI2 = AlphaBeta(depth=2)
 glutton_AI = Glutton()
 glutton_AI2 = Glutton()
 human = HumanPlayer()
 dig_glutton = DiggingGlutton(depth=2)
+
 # player can be from classes AlphaBeta, Glutton, HumanPlayer
 def play_othello1(player1, player2, display=True):
     # white is -1
@@ -53,65 +55,11 @@ def play_othello1(player1, player2, display=True):
     return white, black
 
 
-# board = Board()
-# board.grid[3,3] = board.grid[4, 4] = -1
-# board.grid[2,1] = board.grid[2, 2] = board.grid[2, 3] = 1
-# board.grid[3,4] = board.grid[4, 3] = 1
-# board.print()
-# determine_alpha_beta(board, -1, depth=2)
-play_othello1(alpha_beta_AI, dig_glutton, display=True)
-# nv = 0
-# n = 0
-# episode_length = 64
-# nb_ep = 0
-# brain.eval()
-#
-# adversaries = ['self'] + [DiggingGlutton(depth=k) for k in range(3)]
-# wins = [0 for adv in adversaries]
-# games = [0 for avd in adversaries]
-#
-# def select_adversary(adversaries, wins, games, nb_ep):
-#     distrib = np.array([(games[i] - wins[i])/(games[i]+1)**2 + 1/(2**i) for i in range(len(adversaries))])
-#     distrib /= np.sum(distrib)
-#     i = np.where(np.random.multinomial(1, distrib) == 1)[0][0]
-#     adv = adversaries[i]
-#     if adv == 'self':
-#         adv_brain = DenseBrain(hidden_size, dropout=0.4)
-#         if nb_ep > 1:
-#             n_adv = np.random.randint(max(1, nb_ep - 4), nb_ep)
-#             adv_brain.load_state_dict(torch.load('models/against_glutton_and_self_{}.pt'.format(n_adv)))
-#         adv_brain.eval()
-#         adv = MLAgent(adv_brain)
-#     return i, adv
-#
-#
-#
-# while True:
-#     ep_victories = 0
-#     nb_ep += 1
-#     for ep in range(episode_length):
-#         n += 1
-#         k, adv = select_adversary(adversaries, wins, games, nb_ep)
-#         print('Episode {}, game {} : playing against {} {}... '.format(nb_ep, n, adv, (k-1) if k != 0 else ''), end = '')
-#         games[k] += 1
-#         white, black = play_othello1(learning_AI, adv, display=False)
-#         win = (white - black > 0)
-#         nv += win
-#         wins[k] += win
-#         ep_victories += win
-#         learning_AI.next_game(white - black)
-#         print('Win :)' if win else 'Lost :(')
-#         to_disp = []
-#         for i in range(len(wins)):
-#             to_disp.append(wins[i])
-#             to_disp.append(games[i])
-#
-#     learning_AI.learn()
-#     print('\nEpisode {} finished, {} victories'.format(nb_ep, ep_victories))
-#     print('self : {}/{}, Glutton 0: {}/{}, Glutton 1: {}/{}, Glutton 2: {}/{} --- {totwin}/{total} total'.format(*to_disp,totwin=nv,total=n))
-#     learning_AI.reset()
-#     torch.save(brain.state_dict(), 'models/against_glutton_and_self_{}.pt'.format(nb_ep))
-#
-# brain.eval()
+adversaries = ['self', DiggingGlutton(depth=0), DiggingGlutton(depth=1)]
+#brain.train()
+#learning_AI.train(adversaries, 10)
 
+brain.eval()
+game = Game(learning_AI, DiggingGlutton(depth=1))
+game.rollout()
 

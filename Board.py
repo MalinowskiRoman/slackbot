@@ -11,10 +11,12 @@ x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
 class Board:
 	directions = [(0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
 
-	def __init__(self, grid=None):
+	def __init__(self, grid=None, display_mode='basic'):
 		self.grid = np.zeros((8,8)) if grid is None else grid
 		self.grid[3,3] = self.grid[4,4] = 1
 		self.grid[3,4] = self.grid[4, 3] = -1
+
+		self.display_mode = display_mode
 
 	def __getitem__(self, item):
 		return self.grid[item]
@@ -79,21 +81,40 @@ class Board:
 		x, y = pos
 		return 0 <= x <= 7 and 0 <= y <= 7
 
-	def print(self):
-		b = '\u25CE'
-		w = '\u25C9'
-		print('\u22BF a| b|c|d| e|f|g |h')
-		for index, line in enumerate(self.grid):
-			li = str(index + 1) + '|'
-			for i in line:
-				if i == -1:
-					li += w + '|'
-				elif i == 1:
-					li += b + '|'
-				else:
-					li += '\u25A2' + '|'
-			print(li)
-		print(' ' + '\u203E' * 16)
+	def __str__(self):
+		if self.display_mode == 'advanced':
+			numbers = ["one1", "two1", "three1", "four1", "five1", "six1", "seven1", "eight1"]
+			w = ':white_pawn:'
+			b = ':black_pawn:'
+			li = ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
+
+			for index, line in enumerate(self.grid):
+				li += ':' + numbers[index] + ':'
+				for i in line:
+					if i == -1:
+						li += w
+					elif i == 1:
+						li += b
+					else:
+						li += ':white_grid:'
+				li += ':' + numbers[index] + ':' + '\n'
+			li += ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
+			return li
+		elif self.display_mode == 'basic':
+			b = '\u25CE'
+			w = '\u25C9'
+			message = '\u22BF a| b|c|d| e|f|g |h\n'
+			for index, line in enumerate(self.grid):
+				li = str(index + 1) + '|'
+				for i in line:
+					if i == -1:
+						li += w + '|'
+					elif i == 1:
+						li += b + '|'
+					else:
+						li += '\u25A2' + '|'
+				message += li + '\n'
+			return message + ' ' + '\u203E' * 16
 
 	# returns the number of definitive coins for each side
 	# rhe flag bool detects if we got into the for loop or not
@@ -258,3 +279,48 @@ class Board:
 				y -= 1
 
 		return definitive
+
+class Game:
+	def __init__(self, player1, player2, display_func=print, board = None, cur_team=-1):
+		self.player1 = player1
+		self.player1.set_team('white')
+		self.player2 = player2
+		self.player2.set_team('black')
+		self.board = Board() if board == None else board
+		self.cur_team = cur_team
+		self.display_func = display_func
+		if self.display_func:
+			self.display_func('Starting a new game ! {} vs {}'.format(player1, player2))
+			self.display_func(self.board)
+
+	def next(self):
+		if not self.board.possible_moves(self.cur_team):
+			if not self.board.possible_moves(-self.cur_team):
+				return self.end()
+			else:
+				if self.display_func:
+					self.display_func('{} cannot play'.format('White' if self.cur_team == -1 else 'Black'))
+				self.cur_team = -self.cur_team
+		else:
+			if self.cur_team == -1:
+				move = self.player1.play(self.board)
+			else:
+				move = self.player2.play(self.board)
+			print(move)
+			self.board.execute_turn(move, self.cur_team)
+			if self.display_func:
+				self.display_func('{} played {}'.format('White' if self.cur_team == -1 else 'Black', chr(move[1] + ord('a')) + str(move[0]+1)))
+				self.display_func(self.board)
+			self.cur_team = -self.cur_team
+
+	def end(self):
+		black, white = self.board.count_score()
+		if self.display_func:
+			self.display_func('Game is finished. Final score : \nWhite Team ({}) : {}\nBlack team ({}) : {}'.format(self.player1, white, self.player2, black))
+		return black, white
+
+	def rollout(self):
+		scores = None
+		while not scores:
+			scores = self.next()
+		return scores
