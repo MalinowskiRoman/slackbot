@@ -318,10 +318,9 @@ class Board:
 		score = 2 * move_diff + 100 * corner_diff - 100 * x_diff - 50 * c_diff + 30 * def_diff
 
 		if maximize:
-			score = score * team_val
-		else:
 			score = - score * team_val
-		return score
+		else:
+			score =  score * team_val
 
 		return score
 

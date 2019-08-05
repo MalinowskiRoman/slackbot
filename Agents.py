@@ -234,15 +234,22 @@ class AlphaBeta(Player):
 		self.maximize = maximize
 		self.name = 'AlphaBeta'
 
-	def play(self, board):
+	def play(self, board, test=False):
 		list_moves = board.possible_moves(self.team_val)
 		for move in corners:
 			if move in list_moves:
 				return move
-		score = []
-		for move in list_moves:
-			score += [board.update(move, self.team_val, in_place=False).alpha_beta(self.team_val, self.depth, alpha=-np.inf, beta=np.inf, maximize=True)]
-		return list_moves[score.index(max(score))]
+		if not test:
+			score = []
+			for move in list_moves:
+				score += [self.alpha_beta(board.update(move, self.team_val, in_place=False), self.team_val, self.depth, alpha=-np.inf, beta=np.inf, maximize=False)]
+			return list_moves[score.index(max(score))]
+		else:
+			tree = [board, 0, []]
+			for move in list_moves:
+				tree[2] += [self.alpha_beta_tree(board.update(move, self.team_val, in_place=False), self.team_val, self.depth, alpha=-np.inf, beta=np.inf, branch=[], maximize=False)]
+			tree[1] = max([tree[2][i][1] for i in range(len(tree[2]))])
+			return tree
 
 	def alpha_beta(self, board, team_val, depth, alpha, beta, maximize=True):
 		# We have to return the score of the root team (in the algorithm
@@ -259,18 +266,61 @@ class AlphaBeta(Player):
 					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
 					max_ = max(max_, val)
 					alpha = max(alpha, max_)
+					print('Maximizing')
+					print(board.update(move, team_val, in_place=False))
+					print(val)
+					print('\n')
 					if alpha >= beta:
 						break
 				return max_
 			else:
+
 				min_ = np.inf
 				for move in board.possible_moves(team_val):
 					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
 					min_ = min(min_, val)
 					beta = min(beta, min_)
+					print('Minimizing')
+					print(board.update(move, team_val, in_place=False))
+					print(val)
+					print('\n')
 					if alpha >= beta:
 						break
 				return min_
+
+	def alpha_beta_tree(self, board, team_val, depth, alpha, beta, branch, maximize=True):
+		# We have to return the score of the root team (in the algorithm
+		# the other team want to minimize this one, not maximizing it, even if
+		# is equivalent in othello
+		if depth == 0 or not board.possible_moves(team_val):
+			# return evaluate_score(board_param, team_val, turn_count, maximize)
+			return board, board.compute_score(team_val, maximize)
+		else:
+			team_val = - team_val
+			branch += [board, 0, []]
+			if maximize:
+				max_ = - np.inf
+				for move in board.possible_moves(team_val):
+					val = self.alpha_beta_tree(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, [], not maximize)
+					max_ = max(max_, val[1])
+					alpha = max(alpha, max_)
+					branch[2] += [val]
+					if alpha >= beta:
+						break
+				branch[1] = max_
+				return branch
+			else:
+
+				min_ = np.inf
+				for move in board.possible_moves(team_val):
+					val = self.alpha_beta_tree(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, [], not maximize)
+					min_ = min(min_, val[1])
+					beta = min(beta, min_)
+					branch[2] += [val]
+					if alpha >= beta:
+						break
+					branch[1] = min_
+				return branch
 
 	def reset(self):
 		self.turn_count = 0
