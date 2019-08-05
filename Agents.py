@@ -1,10 +1,18 @@
 import copy
 import os
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from othello_functions import *
 from Board import Board, Game
+
+global corners
+corners = [(0, 0), (0, 7), (7, 0), (7, 7)]
+global c_square
+c_square = [(0, 1), (0, 7), (1, 0), (1, 7), (6, 0), (6, 7), (7, 1), (7, 6)]
+global x_square
+x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
+
 def convert_board(board, team):
 	"""
 	convert the boards to contain 0,1,2 index : 0 is empty, 1 is current team and 2 is other team
@@ -71,6 +79,13 @@ class MLAgent(Player):
 		scores = torch.where(valid, scores, torch.full((64,), -1000))
 		sampler = torch.distributions.categorical.Categorical(logits=scores)
 		move = sampler.sample()
+		ctr = 0
+		while not valid[move.item()]:
+			if ctr > 5:
+				print(valid)
+				print(scores)
+				print([self.brain.parameters()])
+			move = sampler.sample()
 		self.move_history[-1].append(sampler.log_prob(move).unsqueeze(0))
 		return move.item() // 8, move.item() % 8
 
@@ -78,7 +93,7 @@ class MLAgent(Player):
 		self.brain.zero_grad()
 		self.reward_history = torch.FloatTensor(self.reward_history)
 		self.reward_history -= self.reward_history.mean()
-		self.reward_history /= self.reward_history.std()
+		self.reward_history /= (1 + self.reward_history.std(unbiased=False))
 		loss = torch.Tensor([0.])
 		for i in range(len(self.reward_history)):
 			moves = torch.cat(tuple(self.move_history[i]), dim=0)
@@ -228,11 +243,19 @@ class AlphaBeta(Player):
 		self.name = 'AlphaBeta'
 
 	def play(self, board):
-		self.turn_count += 2
-		return determine_alpha_beta(board, self.team_val, self.depth)
+		list_moves = board.possible_moves(self.team_val)
+		for move in corners:
+			if move in list_moves:
+				return move
+		score = []
+		for move in list_moves:
+			score += [board.update(move, self.team_val, in_place=False).alpha_beta(self.team_val, self.depth, alpha=-np.inf, beta=np.inf, maximize=True)]
+		return list_moves[score.index(max(score))]
 
 	def reset(self):
 		self.turn_count = 0
+
+
 
 
 class HumanPlayer(Player):
@@ -241,7 +264,27 @@ class HumanPlayer(Player):
 		self.name = 'Human'
 
 	def play(self, board):
-		return determine_human(board, self.team_val)
-
-
+		if self.team_val == 1:
+			team = 'black'
+		else:
+			team = 'white'
+		format_ok = False
+		while not format_ok:
+			print('\nTime for the ' + team + ' team to play !')
+			txt = input('Where do you want to place a pawn ?\n\n')
+			print('')
+			try:
+				j = ord(txt[0].lower()) - ord('a')
+				i = int(txt[1]) - 1
+			except:
+				print('Use a format like "b7" !')
+				continue
+			if i in range(8) and j in range(8):
+				if board.is_move_possible((i, j), self.team_val):
+					format_ok = True
+				else:
+					print("You can't put it there")
+			else:
+				print('Use a format like "b7" !')
+		return i, j
 

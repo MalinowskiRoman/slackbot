@@ -88,7 +88,7 @@ class Board:
 			b = ':black_pawn:'
 			li = ':black_square_button::aletter::bletter::cletter::dletter::eletter::fletter::gletter::hletter::black_square_button:\n'
 
-			for index, line in enumerate(board):
+			for index, line in enumerate(self.grid):
 				li += ':' + numbers[index] + ':'
 				for i in line:
 					if i == -1:
@@ -280,6 +280,82 @@ class Board:
 
 		return definitive
 
+	def alpha_beta(self, team_val, depth, alpha, beta, maximize=True):
+		# We have to return the score of the root team (in the algorithm
+		# the other team want to minimize this one, not maximizing it, even if
+		# is equivalent in othello
+		if depth == 0 or not self.possible_moves(team_val):
+			# return evaluate_score(board_param, team_val, turn_count, maximize)
+			return self.compute_score(team_val, maximize)
+		else:
+			team_val = - team_val
+			if maximize:
+				max_ = - np.inf
+				for move in self.possible_moves(team_val):
+					val = self.update(move, team_val, in_place=False).alpha_beta(team_val, depth - 1, alpha, beta, not maximize)
+					max_ = max(max_, val)
+					alpha = max(alpha, max_)
+					if alpha >= beta:
+						break
+				return max_
+			else:
+				min_ = np.inf
+				for move in self.possible_moves(team_val):
+					val = self.update(move, team_val, in_place=False).alpha_beta(team_val, depth - 1, alpha, beta, not maximize)
+					min_ = min(min_, val)
+					beta = min(beta, min_)
+					if alpha >= beta:
+						break
+				return min_
+
+	def compute_score(self, team_val, maximize):
+		# black, white = self.count_score()
+		# disc_diff = 100 * (black - white) / (black + white)
+
+		black_move, white_move = len(self.possible_moves(1)), len(self.possible_moves(-1))
+		move_diff = 100 * (black_move - white_move) / (black_move + white_move + 1)
+
+		black_corner = white_corner = 0
+		for corner in corners:
+			if self[corner[0], corner[1]] == 1:
+				black_corner += 1
+			elif self[corner[0], corner[1]] == -1:
+				white_corner += 1
+		corner_diff = 100 * (black_corner - white_corner) / (black_corner + white_corner + 1)
+
+		c_black = c_white = 0
+		for i, move in enumerate(c_square):
+			if self[move] == 1 and corners[i // 2] != 1:
+				c_black += 1
+			if self[move] == -1 and corners[i // 2] != -1:
+				c_white += 1
+		c_diff = 100 * (c_black - c_white) / (c_black + c_white + 1)
+
+		x_black = x_white = 0
+		for i, move in enumerate(x_square):
+			if self[move] == 1 and corners[i] != 1:
+				x_black += 1
+			if self[move] == -1 and corners[i] != -1:
+				x_white += 1
+		x_diff = 100 * (x_black - x_white) / (x_black + c_white + 1)
+
+		# definitive = self.definitive_coins()
+		# for move in x_square + c_square:
+		#     if definitive[move] != self[move]:
+		#         definitive.grid[move] = - self[move]
+		# black_def, white_def = definitive.count_score()
+		# def_diff = 100 * (black_def - white_def) / (black_def + white_def + 1)
+
+		score = 2 * move_diff + 100 * corner_diff - 100 * x_diff - 50 * c_diff
+
+		if maximize:
+			score = score * team_val
+		else:
+			score = - score * team_val
+		return score
+
+		return score
+
 class Game:
 	def __init__(self, player1, player2, display_func=print, board = None, cur_team=-1):
 		self.player1 = player1
@@ -292,7 +368,6 @@ class Game:
 		if self.display_func:
 			self.display_func('Starting a new game ! {} vs {}'.format(player1, player2))
 			self.display_func(self.board)
-
 
 	def next(self):
 		if not self.board.possible_moves(self.cur_team):

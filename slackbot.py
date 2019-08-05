@@ -5,7 +5,9 @@ import datetime
 import time
 import praw
 import calendar
-from othello import *
+import torch
+from Board import Board, Game
+from Agents import MLAgent, DiggingGlutton, Player, DenseBrain
 
 token = 'xoxp-684260139683-689311425137-684247936882-151caac50e5f63ad69b6272127ade6a3'
 bot_token = 'xoxb-684260139683-697808802582-aBdjKsw9s19ikbcFrtPpwEP7'
@@ -43,10 +45,21 @@ def get_history_channel(name, tok=token):
         raise Exception('Could not find the name of the channel : {}'.format(name))
 
 
+def get_user_name(user, tok=token):
+    try:
+        url = 'https://slack.com/api/users.info?token=' + tok + '&user=' + user
+        response = requests.get(url)
+        response = response.json()
+        return response['user']['real_name']
+    except:
+        raise Exception('Could not find the name of the user : {}'.format(user))
+
+
 def write_message(message):
     response = requests.get(
-        'https://slack.com/api/chat.postMessage?token=' + bot_token + '&channel=' + channel_name + '&text=' + message + '&pretty=1')
+        'https://slack.com/api/chat.postMessage?token=' + bot_token + '&channel=' + channel_name + '&text=' + str(message) + '&pretty=1')
     print(response.json())
+
 
 
 def message_sin_call(text, call):
@@ -85,7 +98,7 @@ def analyse_message(tok=token):
                     with open('othello.txt', 'w') as f:
                         f.writelines(last_message['user'] + '\n')
                     if text.lower() == 'play othello':
-                        write_message('Deuxième joueur ? (Ecrire othello joueur 2')
+                        write_message('Deuxième joueur ? (Ecrire othello joueur 2)')
                     else:
                         if 'glutton' in text.lower():
                             k = int(text.lower()[text.lower().find('glutton') + 8])
@@ -121,28 +134,33 @@ def analyse_message(tok=token):
                         ' "help"')
         except IndexError:
             print('Pas de messages')
-        except KeyError:
-            print('Key Error')
+        except KeyError as err:
+            print(err)
+
     except Exception:
         print('COULD NOT FIND THE NAME OF THE CHANNEL')
         # print(history)
 
+
 class SlackPlayer(Player):
     def __init__(self, user, team=None):
         super().__init__(team)
-        self.name = user
+        self.user = user
+        self.name = get_user_name(user)
 
     def play(self, board):
-        history = get_history_channel(tok)
         write_message('\nTeam ' + self.team + ', where do you want to place a pawn ?\n')
         while True:
             try:
+                time.sleep(1)
+                history = get_history_channel(token)
+                print(history)
                 last_message = history['messages'][0]
                 try:
                     last_message['bot_id']
                 except:
                     user = last_message['user']
-                    if user != self.name:
+                    if user != self.user:
                         write_message("C'est pas à toi de jouer wesh")
                     else:
                         # la partie qui nous interesse
@@ -152,6 +170,7 @@ class SlackPlayer(Player):
                                 j = ord(text[0].lower()) - ord('a')
                                 i = int(text[1]) - 1
                                 if board.is_move_possible((i,j), self.team_val):
+                                    print(i,j)
                                     return i, j
                                 else:
                                     write_message('You can\'t put it there!')
@@ -162,8 +181,8 @@ class SlackPlayer(Player):
             except IndexError:
                 print('Pas de messages while othello')
                 return -1, -1
-            except KeyError:
-                print('Key Error while othello')
+            except KeyError as err:
+                print(err)
                 return -1, -1
 
 # def analyse_othello_move(team, tok=token):
