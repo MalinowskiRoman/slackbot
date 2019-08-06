@@ -1,11 +1,11 @@
 import copy
+import os
 import numpy as np
 import os
 import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from Board import Board, Game
 
 global corners
@@ -15,18 +15,17 @@ c_square = [(0, 1), (0, 7), (1, 0), (1, 7), (6, 0), (6, 7), (7, 1), (7, 6)]
 global x_square
 x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
 
-
 def convert_board(board, team):
-    """
-    convert the boards to contain 0,1,2 index : 0 is empty, 1 is current team and 2 is other team
-    :param team: -1 (white) or 1 (black)
-    :return: the converted board
-    """
-    if team == -1:
-        idx = {-1: 1, 0: 0, 1: 2}
-    elif team == 1:
-        idx = {-1: 2, 0: 0, 1: 1}
-    return torch.LongTensor([[idx[board[i][j]] for i in range(8)] for j in range(8)])
+	"""
+	convert the boards to contain 0,1,2 index : 0 is empty, 1 is current team and 2 is other team
+	:param team: -1 (white) or 1 (black)
+	:return: the converted board
+	"""
+	if team == -1:
+		idx = {-1: 1, 0: 0, 1:2}
+	elif team == 1:
+		idx = {-1: 2, 0: 0, 1: 1}
+	return torch.LongTensor([[idx[board[i][j]] for i in range(8)] for j in range(8)])
 
 
 class DenseBrain(nn.Module):
@@ -65,21 +64,21 @@ class StateActionPolicy(nn.Module):
 # 		self.
 
 class Player:
-    def __init__(self, team=None):
-        self.team_val = -1 if team == 'white' else 1 if team == 'black' else None
-        self.team = team
-        self.name = 'Player'
+	def __init__(self, team=None):
+		self.team_val = -1 if team =='white' else 1 if team == 'black' else None
+		self.team = team
+		self.name = 'Player'
 
-    def play(self, board):
-        pass
+	def play(self, board):
+		pass
 
-    def __str__(self):
-        return self.name
+	def __str__(self):
+		return self.name
 
-    def set_team(self, team):
-        assert team in ['white', 'black']
-        self.team = team
-        self.team_val = -1 if team == 'white' else 1
+	def set_team(self, team):
+		assert team in ['white', 'black']
+		self.team = team
+		self.team_val = -1 if team == 'white' else 1
 
 
 class MLAgent(Player):
@@ -197,9 +196,9 @@ class MLAgent(Player):
 
 
 class Glutton(Player):
-    def __init__(self, team=None):
-        super().__init__(team)
-        self.name = 'Glutton'
+	def __init__(self, team=None):
+		super().__init__(team)
+		self.name = 'Glutton'
 
     def play(self, board):
         moves = board.possible_moves(self.team_val)
@@ -215,14 +214,14 @@ class Glutton(Player):
 
 
 class DiggingGlutton(Player):
-    def __init__(self, team=None, depth=2):
-        super().__init__(team)
-        self.name = 'Glutton {}'.format(depth)
-        self.depth = depth
+	def __init__(self, team=None, depth=2):
+		super().__init__(team)
+		self.name = 'Glutton {}'.format(depth)
+		self.depth=depth
 
-    def play(self, board):
-        move, _ = self.get_score(board, self.depth)
-        return move
+	def play(self, board):
+		move, _ = self.get_score(board, self.depth)
+		return move
 
     def get_score(self, board, depth=2):
         #		print('Depth : {}'.format(depth))
@@ -260,64 +259,57 @@ class DiggingGlutton(Player):
 
 
 class AlphaBeta(Player):
+	def __init__(self, depth, team=None):
+		super().__init__(team)
+		self.depth = depth
+		self.turn_count = 0
+		self.name = 'AlphaBeta'
 
-    def __init__(self, depth, team=None, maximize=True):
-        super().__init__(team)
-        self.depth = depth
-        self.turn_count = 0
-        self.maximize = maximize
-        self.name = 'AlphaBeta'
+	def play(self, board, test=False):
+		list_moves = board.possible_moves(self.team_val)
+		for move in corners:
+			if move in list_moves:
+				return move
+		if not test:
+			score = []
+			for move in list_moves:
+				score += [self.alpha_beta(board.update(move, self.team_val, in_place=False), self.team_val, self.depth, alpha=-np.inf, beta=np.inf, maximize=False)]
+			return list_moves[score.index(max(score))]
+		else:
+			tree = [board, 0, []]
+			for move in list_moves:
+				tree[2] += [self.alpha_beta_tree(board.update(move, self.team_val, in_place=False), self.team_val, self.depth, alpha=-np.inf, beta=np.inf, branch=[], maximize=False)]
+			tree[1] = max([tree[2][i][1] for i in range(len(tree[2]))])
+			return tree
 
-    def play(self, board, test=False):
-        list_moves = board.possible_moves(self.team_val)
-        for move in corners:
-            if move in list_moves:
-                return move
-        if not test:
-            score = []
-            for move in list_moves:
-                score += [self.alpha_beta(board.update(move, self.team_val, in_place=False), self.team_val, self.depth,
-                                          alpha=-np.inf, beta=np.inf, maximize=False)]
-            return list_moves[score.index(max(score))]
-        else:
-            tree = [board, 0, []]
-            for move in list_moves:
-                tree[2] += [
-                    self.alpha_beta_tree(board.update(move, self.team_val, in_place=False), self.team_val, self.depth,
-                                         alpha=-np.inf, beta=np.inf, branch=[], maximize=False)]
-            tree[1] = max([tree[2][i][1] for i in range(len(tree[2]))])
-            return tree
+	def alpha_beta(self, board, team_val, depth, alpha, beta, maximize=True):
+		# We have to return the score of the root team (in the algorithm
+		# the other team want to minimize this one, not maximizing it, even if
+		# is equivalent in othello
+		if depth == 0 or not board.possible_moves(team_val):
+			# return evaluate_score(board_param, team_val, turn_count, maximize)
+			return board.compute_score(team_val, maximize)
+		else:
+			team_val = - team_val
+			if maximize:
+				max_ = - np.inf
+				for move in board.possible_moves(team_val):
+					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
+					max_ = max(max_, val)
+					alpha = max(alpha, max_)
+					if alpha >= beta:
+						break
+				return max_
+			else:
 
-    def alpha_beta(self, board, team_val, depth, alpha, beta, maximize=True):
-        # We have to return the score of the root team (in the algorithm
-        # the other team want to minimize this one, not maximizing it, even if
-        # is equivalent in othello
-        if depth == 0 or not board.possible_moves(team_val):
-            # return evaluate_score(board_param, team_val, turn_count, maximize)
-            return board.compute_score(team_val, maximize)
-        else:
-            team_val = - team_val
-            if maximize:
-                max_ = - np.inf
-                for move in board.possible_moves(team_val):
-                    val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha,
-                                          beta, not maximize)
-                    max_ = max(max_, val)
-                    alpha = max(alpha, max_)
-                    if alpha >= beta:
-                        break
-                return max_
-            else:
-
-                min_ = np.inf
-                for move in board.possible_moves(team_val):
-                    val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha,
-                                          beta, not maximize)
-                    min_ = min(min_, val)
-                    beta = min(beta, min_)
-                    if alpha >= beta:
-                        break
-                return min_
+				min_ = np.inf
+				for move in board.possible_moves(team_val):
+					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
+					min_ = min(min_, val)
+					beta = min(beta, min_)
+					if alpha >= beta:
+						break
+				return min_
 
     def alpha_beta_tree(self, board, team_val, depth, alpha, beta, branch, maximize=True):
         # We have to return the score of the root team (in the algorithm
@@ -357,6 +349,8 @@ class AlphaBeta(Player):
 
     def reset(self):
         self.turn_count = 0
+
+
 
 
 class HumanPlayer(Player):

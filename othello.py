@@ -8,6 +8,7 @@ import time
 from Agents import MLAgent, DenseBrain, HumanPlayer, Glutton, AlphaBeta, DiggingGlutton, MCTS, StateActionPolicy, Alpha, RandomPlayer
 from Board import Board, Game
 
+
 class Arena:
 	def __init__(self, nb_players, dir):
 		self.players = []

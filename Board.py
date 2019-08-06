@@ -1,5 +1,5 @@
-import copy
 import numpy as np
+import copy
 
 global corners
 corners = [(0, 0), (0, 7), (7, 0), (7, 7)]
@@ -8,51 +8,49 @@ c_square = [(0, 1), (0, 7), (1, 0), (1, 7), (6, 0), (6, 7), (7, 1), (7, 6)]
 global x_square
 x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
 
-
 class Board:
-    directions = [(0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+	directions = [(0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
 
-    def __init__(self, grid=None, display_mode='basic', init=True):
-        self.grid = np.zeros((8, 8)) if grid is None else grid
-        if init:
-            self.grid[3, 3] = self.grid[4, 4] = 1
-            self.grid[3, 4] = self.grid[4, 3] = -1
+	def __init__(self, grid=None, display_mode='basic'):
+		self.grid = np.zeros((8,8)) if grid is None else grid
+		self.grid[3,3] = self.grid[4,4] = 1
+		self.grid[3,4] = self.grid[4, 3] = -1
 
-        self.display_mode = display_mode
+		self.display_mode = display_mode
 
-    def __getitem__(self, item):
-        return self.grid[item]
+	def __getitem__(self, item):
+		return self.grid[item]
 
-    def update(self, pos, team_val, in_place=True):
-        to_update = [8 * x + y for x, y in self.check_lines(pos, team_val)]
-        if in_place:
-            self.grid.put(to_update, team_val)
-        else:
-            grid = copy.deepcopy(self.grid)
-            grid.put(to_update, team_val)
-            return Board(grid, init=False)
+	def update(self, pos, team_val, in_place=True):
+		to_update = [8*x+y for x,y in self.check_lines(pos, team_val)]
+		if in_place:
+			self.grid.put(to_update, team_val)
+		else:
+			grid = copy.deepcopy(self.grid)
+			grid.put(to_update, team_val)
+			return Board(grid)
 
-    def check_line(self, pos, dir, team_val):
-        if self.grid[pos] != 0:
-            return []
-        i, j = pos
-        e1, e2 = dir
-        mem = []
-        i += e1
-        j += e2
-        while 0 <= i < 8 and 0 <= j < 8 and self.grid[i, j] == -team_val:
-            mem.append((i, j))
-            i += e1
-            j += e2
-        if 0 <= i < 8 and 0 <= j < 8 and self.grid[i, j] == team_val:
-            return mem
-        return []
+	def check_line(self, pos, dir, team_val):
+		if self.grid[pos] != 0:
+			return []
+		i, j = pos
+		e1, e2 = dir
+		mem = []
+		i += e1
+		j += e2
+		while 0 <= i < 8 and 0 <= j < 8 and self.grid[i, j] == -team_val:
+			mem.append((i, j))
+			i += e1
+			j += e2
+		if 0 <= i < 8 and 0 <= j < 8 and self.grid[i, j] == team_val:
+			return mem
+		return []
 
-    def check_lines(self, pos, team_val):
-        mem = []
-        for dir in self.directions:
-            mem.extend(self.check_line(pos, dir, team_val))
-        return mem + [pos] if mem else []
+	def check_lines(self, pos, team_val):
+		mem = []
+		for dir in self.directions:
+			mem.extend(self.check_line(pos, dir, team_val))
+		return mem + [pos] if mem else []
 
     def is_move_possible(self, pos, team_val):
         if not isinstance(pos, tuple):
@@ -322,12 +320,12 @@ class Board:
 
         score = 2 * move_diff + 100 * corner_diff - 100 * x_diff - 50 * c_diff + 30 * def_diff
 
-        if maximize:
-            score = - score * team_val
-        else:
-            score = score * team_val
+		if maximize:
+			score = - score * team_val
+		else:
+			score = score * team_val
 
-        return score
+		return score
 
     def __eq__(self, board):
         if isinstance(board, Board):
