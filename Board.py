@@ -350,7 +350,6 @@ class Game:
 				move = self.player1.play(self.board)
 			else:
 				move = self.player2.play(self.board)
-			print(move)
 			self.board.execute_turn(move, self.cur_team)
 			if self.display_func:
 				self.display_func('{} played {}'.format('White' if self.cur_team == -1 else 'Black', chr(move[1] + ord('a')) + str(move[0]+1)))
