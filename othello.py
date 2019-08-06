@@ -7,6 +7,7 @@ import os
 from Agents import MLAgent, DenseBrain, HumanPlayer, Glutton, AlphaBeta, DiggingGlutton
 from Board import Board, Game
 
+
 class Arena:
 	def __init__(self, nb_players, dir):
 		self.players = []
@@ -71,7 +72,6 @@ class Arena:
 			print('{:<2}. Agent {:<2} [Inner dim: {:<3}, dropout: {:<3.2f}, lr: {:<5.4f}, momentum: {:<3.2f}]: {:>4} wins ({} games)'.format(rk, i, dim, dropout, lr, momentum, wins, games))
 
 
-
 arena = Arena(32, 'arena')
 players = []
 params = [{} for i in range(32)]
@@ -96,11 +96,8 @@ with open('arena/records.json', 'r') as f:
 arena.wander()
 
 
-
-
-
 def train(players, length = 10):
-	#every player meet every other length times
+	# every player meet every other length times
 	print('Train phase !')
 	N = len(players)
 	for k in range(length):
@@ -159,36 +156,36 @@ dig_glutton = DiggingGlutton(depth=2)
 # player can be from classes AlphaBeta, Glutton, HumanPlayer
 def play_othello1(player1, player2, display=True):
 	# white is -1
-    # black is 1
-    board = Board()
-    player1.set_team('white')
-    player2.set_team('black')
-    team_val = -1
-    while True:
-        if display:
-            print('')
-            print(board)
-        if not board.possible_moves(team_val):
-            if not board.possible_moves(-team_val):
-                break
-            else:
-                team_val = -team_val
-                continue
-        if team_val == -1:
-            i, j = player1.play(board)
-            if display: print(str(player1) + ': ' + chr(j + ord('a')) + str(i+1))
-        else:
-            i, j = player2.play(board)
-            if display: print(str(player2) + ': ' + chr(j + ord('a')) + str(i+1))
-        board.execute_turn((i,j), team_val)
-        team_val = -team_val
-    if display: print(board)
-    # print('////////////////////////////')
-    # board.definitive_coins().print()
-    # print('////////////////////////////')
-    black, white = board.count_score()
-    if display: print('Final score : \nWhite Team ({}) : {}\nBlack team ({}) : {}'.format(player1, white, player2, black))
-    return white, black
+	# black is 1
+	board = Board()
+	player1.set_team('white')
+	player2.set_team('black')
+	team_val = -1
+	while True:
+		if display:
+			print('')
+			print(board)
+		if not board.possible_moves(team_val):
+			if not board.possible_moves(-team_val):
+				break
+			else:
+				team_val = -team_val
+				continue
+		if team_val == -1:
+			i, j = player1.play(board)
+			if display: print(str(player1) + ': ' + chr(j + ord('a')) + str(i+1))
+		else:
+			i, j = player2.play(board)
+			if display: print(str(player2) + ': ' + chr(j + ord('a')) + str(i+1))
+		board.execute_turn((i,j), team_val)
+		team_val = -team_val
+	if display: print(board)
+	# print('////////////////////////////')
+	# board.definitive_coins().print()
+	# print('////////////////////////////')
+	black, white = board.count_score()
+	if display: print('Final score : \nWhite Team ({}) : {}\nBlack team ({}) : {}'.format(player1, white, player2, black))
+	return white, black
 
 
 # adversaries = ['self', DiggingGlutton(depth=0), DiggingGlutton(depth=1)]
@@ -198,7 +195,7 @@ def play_othello1(player1, player2, display=True):
 # brain.eval()
 # game = Game(learning_AI, alpha_beta_AI)
 # game.rollout()
-def turnament(players, nb_train_rounds = 16, nb_eval_rounds = 16):
+def tournament(players, nb_train_rounds = 16, nb_eval_rounds = 16):
 	while len(players) > 1:
 		train(players, nb_train_rounds)
 		players = eliminate(players, nb_eval_rounds)
@@ -207,35 +204,36 @@ def turnament(players, nb_train_rounds = 16, nb_eval_rounds = 16):
 		torch.save(winner.brain.state_dict(), 'models/winner_brain.pt')
 		return winner
 
+
 # play_othello1(alpha_beta_AI, alpha_beta_AI2)
 def test_choices():
-    board = Board()
-    board.grid[2,1] = board.grid[2,2] = board.grid[2,3] = -1
-    board.grid[3,4] = board.grid[4,3] = -1
-    board.grid[3,3] = board.grid[4,4] = 1
-    print(board)
-    alpha_beta_AI2.set_team('black')
-    tree = alpha_beta_AI2.play(board, test=True)
-    print('Begin Branch 0')
-    for i in tree[2]:
-        print('Begin Branch 1')
-        for j in i[2]:
-            print('Begin Branch 2')
-            for k in j[2]:
-                print(k[0])
-                print(k[1])
-                print('')
-            print('end_branch 2')
-            print('')
-            print(j[0])
-            print(j[1])
-            print('')
-        print('end_branch 1')
-        print('')
-        print(i[0])
-        print(i[1])
-        print('')
-    print('end_branch 0')
-    print(tree[0])
-    print([tree[1]])
-    print('\n')
+	board = Board()
+	board.grid[2,1] = board.grid[2,2] = board.grid[2,3] = -1
+	board.grid[3,4] = board.grid[4,3] = -1
+	board.grid[3,3] = board.grid[4,4] = 1
+	print(board)
+	alpha_beta_AI2.set_team('black')
+	tree = alpha_beta_AI2.play(board, test=True)
+	print('Begin Branch 0')
+	for i in tree[2]:
+		print('Begin Branch 1')
+		for j in i[2]:
+			print('Begin Branch 2')
+			for k in j[2]:
+				print(k[0])
+				print(k[1])
+				print('')
+			print('end_branch 2')
+			print('')
+			print(j[0])
+			print(j[1])
+			print('')
+		print('end_branch 1')
+		print('')
+		print(i[0])
+		print(i[1])
+		print('')
+	print('end_branch 0')
+	print(tree[0])
+	print([tree[1]])
+	print('\n')

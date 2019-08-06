@@ -326,7 +326,7 @@ class Board:
 		return score
 
 class Game:
-	def __init__(self, player1, player2, display_func=print, board = None, cur_team=-1):
+	def __init__(self, player1, player2, display_func=print, board=None, cur_team=-1):
 		self.player1 = player1
 		self.player1.set_team('white')
 		self.player2 = player2

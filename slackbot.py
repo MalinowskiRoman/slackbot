@@ -14,11 +14,7 @@ with open('token.txt', 'r') as f:
     token = token[:-1]
     bot_token = f.readline()
 
-
 channel_name = 'general'
-last_move = ''
-move = ''
-team = 'white'
 
 
 def transform(message):
@@ -41,27 +37,28 @@ def get_history_channel(name, tok=token):
     try:
         global channel_id
         url = 'https://slack.com/api/conversations.history?token=' + tok + '&channel=' + channel_id
-        response = requests.get(url)
-        history = response.json()
+        response_channel = requests.get(url)
+        history = response_channel.json()
         return history
-    except:
+    except KeyError:
         raise Exception('Could not find the name of the channel : {}'.format(name))
 
 
 def get_user_name(user, tok=token):
     try:
         url = 'https://slack.com/api/users.info?token=' + tok + '&user=' + user
-        response = requests.get(url)
-        response = response.json()
-        return response['user']['real_name']
+        response_name = requests.get(url)
+        response_name = response_name.json()
+        return response_name['user']['real_name']
     except KeyError:
         raise Exception('Could not find the name of the user : {}'.format(user))
 
 
 def write_message(message):
-    response = requests.get(
-        'https://slack.com/api/chat.postMessage?token=' + bot_token + '&channel=' + channel_name + '&text=' + str(message) + '&pretty=1')
-    print(response.json())
+    response_message = requests.get(
+        'https://slack.com/api/chat.postMessage?token=' + bot_token + '&channel=' + channel_name + '&text=' +
+        str(message) + '&pretty=1')
+    print(response_message.json())
 
 
 def message_sin_call(text, call):
@@ -92,13 +89,13 @@ def analyse_message(tok=token):
                 elif 'kubat' in text.lower() and 'nico' in text.lower():
                     update_counter('nico')
                 elif 'affiche' in text.lower() and 'score' in text.lower():
-                    with open('C:/Users/roman/Desktop/Compteur.txt', 'r') as f:
-                        n = f.readline()
-                        m = f.readline()
+                    with open('C:/Users/roman/Desktop/Compteur.txt', 'r') as count_file:
+                        n = count_file.readline()
+                        m = count_file.readline()
                         write_message(n + m)
                 elif 'othello' in text.lower():
-                    with open('othello.txt', 'w') as f:
-                        f.writelines(last_message['user'] + '\n')
+                    with open('othello.txt', 'w') as player_file:
+                        player_file.writelines(last_message['user'] + '\n')
                     if text.lower() == 'othello':
                         write_message('Deuxième joueur ? (Ecrire \"othello joueur 2\")')
                     else:
@@ -133,6 +130,8 @@ def analyse_message(tok=token):
                             except ValueError:
                                 k = 2
                             player2 = AlphaBeta(k)
+                        else:
+                            player2 = DiggingGlutton(depth=2)
                         player1 = SlackPlayer(last_message['user'])
                         # if we choose to let the IA Begin
                         if player_number == 1:
@@ -142,11 +141,11 @@ def analyse_message(tok=token):
                         game.rollout()
 
                 elif 'othello joueur 2' in text.lower():
-                    with open('othello.txt', 'a') as f:
-                        f.writelines(last_message['user'])
-                    with open('othello.txt', 'r') as f:
-                        player1 = f.readline()[:-1]
-                        player2 = f.readline()
+                    with open('othello.txt', 'a') as player_file:
+                        player_file.writelines(last_message['user'])
+                    with open('othello.txt', 'r') as player_file:
+                        player1 = player_file.readline()[:-1]
+                        player2 = player_file.readline()
                     board = Board(display_mode='advanced')
                     player1 = SlackPlayer(player1)
                     player2 = SlackPlayer(player2)
@@ -188,7 +187,6 @@ class SlackPlayer(Player):
             try:
                 time.sleep(1)
                 history = get_history_channel(token)
-                print(history)
                 last_message = history['messages'][0]
                 try:
                     last_message['bot_id']
@@ -203,12 +201,13 @@ class SlackPlayer(Player):
                             try:
                                 j = ord(text[0].lower()) - ord('a')
                                 i = int(text[1]) - 1
-                                if board.is_move_possible((i,j), self.team_val):
-                                    print(i,j)
+                                if board.is_move_possible((i, j), self.team_val):
                                     return i, j
                                 else:
                                     write_message('You can\'t put it there!')
-                            except:
+                            except IndexError:
+                                write_message('Use a format like "b7" !')
+                            except ValueError:
                                 write_message('Use a format like "b7" !')
                         elif 'quit' in text:
                             return 'quit', 0
@@ -221,9 +220,9 @@ class SlackPlayer(Player):
 
 
 def update_counter(name):
-    with open('C:/Users/roman/Desktop/Compteur.txt', 'r') as f:
-        n = f.readline()
-        m = f.readline()
+    with open('C:/Users/roman/Desktop/Compteur.txt', 'r') as count_file:
+        n = count_file.readline()
+        m = count_file.readline()
         if name.lower() == 'nico':
             res = int(n[-2]) + 1
             n = n[:-2] + str(res) + '\n'
@@ -234,8 +233,8 @@ def update_counter(name):
             write_message(transform("C'est noté !") + '\n' + n + m)
         else:
             write_message(transform("J'arrive pas a lire wesh"))
-    with open('C:/Users/roman/Desktop/Compteur.txt', 'w') as f:
-        f.writelines(n + m)
+    with open('C:/Users/roman/Desktop/Compteur.txt', 'w') as count_file:
+        count_file.writelines(n + m)
 
 
 '''Slack connection and setup'''
@@ -248,7 +247,6 @@ channels = response.json()
 print(channels)
 for dic in channels['channels']:
     if dic['name'] == channel_name:
-        global channel_id
         channel_id = dic['id']
         print('Channel id : ' + channel_id)
 
@@ -265,10 +263,10 @@ else:
     print("Connection failed. Exception traceback printed above.")
 
 '''Reddit connection and setup'''
-reddit = praw.Reddit(client_id='oAS5--tyAeKDvg', \
-                     client_secret='HFYIvgFoe9LyKH_JqLPeMW3XmtE', \
-                     user_agent='redditBotScraper', \
-                     username='slackSmartBuild', \
+reddit = praw.Reddit(client_id='oAS5--tyAeKDvg',
+                     client_secret='HFYIvgFoe9LyKH_JqLPeMW3XmtE',
+                     user_agent='redditBotScraper',
+                     username='slackSmartBuild',
                      password='slackSmartBuild')
 subreddit = reddit.subreddit('copypasta')
 new_subreddit = subreddit.new()
@@ -337,6 +335,3 @@ while True:
         if (hour, minute) == (9, 1):
             flag = True
         time.sleep(0.5)
-    # except:
-    #     print('Error somewhere')
-    #     time.sleep(0.5)
