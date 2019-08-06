@@ -320,7 +320,7 @@ class Board:
 		if maximize:
 			score = - score * team_val
 		else:
-			score =  score * team_val
+			score = score * team_val
 
 		return score
 

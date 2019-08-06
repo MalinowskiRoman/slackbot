@@ -7,7 +7,7 @@ import praw
 import calendar
 import torch
 from Board import Board, Game
-from Agents import MLAgent, DiggingGlutton, Player, DenseBrain
+from Agents import MLAgent, DiggingGlutton, Player, DenseBrain, AlphaBeta
 
 token = 'xoxp-684260139683-689311425137-684247936882-151caac50e5f63ad69b6272127ade6a3'
 bot_token = 'xoxb-684260139683-697808802582-aBdjKsw9s19ikbcFrtPpwEP7'
@@ -61,7 +61,6 @@ def write_message(message):
     print(response.json())
 
 
-
 def message_sin_call(text, call):
     length = len(call)
     for i in range(len(text) - length):
@@ -77,7 +76,7 @@ def analyse_message(tok=token):
             last_message = history['messages'][0]
             try:
                 last_message['bot_id']
-            except:
+            except KeyError:
                 # la partie qui nous interesse
                 text = last_message['text']
                 if bot_id in text:
@@ -94,20 +93,47 @@ def analyse_message(tok=token):
                         n = f.readline()
                         m = f.readline()
                         write_message(n + m)
-                elif 'play othello' in text.lower():
+                elif 'othello' in text.lower():
                     with open('othello.txt', 'w') as f:
                         f.writelines(last_message['user'] + '\n')
-                    if text.lower() == 'play othello':
-                        write_message('Deuxième joueur ? (Ecrire othello joueur 2)')
+                    if text.lower() == 'othello':
+                        write_message('Deuxième joueur ? (Ecrire \"othello joueur 2\")')
                     else:
+                        player_number = 2
+                        if 'player' in text.lower():
+                            try:
+                                player_number = int(text.lower()[text.lower().find('player') + 7])
+                                if player_number not in [1, 2]:
+                                    player_number = 2
+                            except IndexError:
+                                player_number = 2
+                            except ValueError:
+                                player_number = 2
+
                         if 'glutton' in text.lower():
-                            k = int(text.lower()[text.lower().find('glutton') + 8])
+                            try :
+                                k = int(text.lower()[text.lower().find('glutton') + 8])
+                            except IndexError:
+                                k = 2
+                            except ValueError:
+                                k = 2
                             player2 = DiggingGlutton(depth=k)
-                        if 'learning' in text.lower():
+                        elif 'learning' in text.lower():
                             brain = DenseBrain(128)
                             brain.load_state_dict(torch.load('models/against_glutton_and_self_125.pt'))
                             player2 = MLAgent(brain)
+                        elif 'alpha' in text.lower():
+                            try:
+                                k = int(text.lower()[text.lower().find('alpha') + 6])
+                            except IndexError:
+                                k = 2
+                            except ValueError:
+                                k = 2
+                            player2 = AlphaBeta(k)
                         player1 = SlackPlayer(last_message['user'])
+                        # if we choose to let the IA Begin
+                        if player_number == 1:
+                            player1, player2 = player2, player1
                         board = Board(display_mode='advanced')
                         game = Game(player1, player2, board=board, display_func=write_message)
                         game.rollout()
@@ -129,14 +155,17 @@ def analyse_message(tok=token):
                         'Petit rappel des commandes :\nPour que je recopie bizarrement votre message, écrivez "@Bob'
                         ' mon message"\nPour rajouter un point au compteur de vouvoiement, écrivez "Kubat" ainsi que '
                         '"Nico" ou "Maxime" dans le même message. J\'ignore les majuscules :wink: \nPour commencer une'
-                        ' partie d\'Othello écrivez "play othello", puis le deuxième joueur écrit "othello joueur 2".\n Pour'
-                        ' les mouvements, écrivez simplement les coordonnées "b5".\n Pour relire ce message, écrivez'
-                        ' "help"')
+                        ' partie d\'Othello contre un autre membre du slack, écrivez "othello", puis votre adversaire '
+                        'écrit "othello joueur 2". \nPour jouer contre une IA, écrivez "othello" suivi de '
+                        '"glutton \'k\' " pour un glouton de profondeur k, "learning" pour une IA de reinforcement '
+                        'learning, "alpha \'k\' " pour une IA de recherche arborescent de profondeur k. \nAjoutez '
+                        '"player 1" pour laisser l\'IA commencer, sinon "player 2" (par défaut vous commencez).'
+                        '\n Pour les mouvements, écrivez simplement les coordonnées "b5".\n Pour relire ce message, '
+                        'écrivez "help"')
         except IndexError:
             print('Pas de messages')
         except KeyError as err:
             print(err)
-
     except Exception:
         print('COULD NOT FIND THE NAME OF THE CHANNEL')
         # print(history)
@@ -388,9 +417,13 @@ while True:
                     'Petit rappel des commandes :\nPour que je recopie bizarrement votre message, écrivez "@Bob'
                     ' mon message"\nPour rajouter un point au compteur de vouvoiement, écrivez "Kubat" ainsi que '
                     '"Nico" ou "Maxime" dans le même message. J\'ignore les majuscules :wink: \nPour commencer une'
-                    ' partie d\'Othello écrivez "play othello", puis le deuxième joueur écrit "othello moi".\n Pour'
-                    ' les mouvements, écrivez simplement les coordonnées "b5".\n Pour relire ce message, écrivez'
-                    ' "help"')
+                    ' partie d\'Othello contre un autre membre du slack, écrivez "othello", puis votre adversaire '
+                    'écrit "othello joueur 2". \nPour jouer contre une IA, écrivez "othello" suivi de '
+                    '"glutton \'k\' " pour un glouton de profondeur k, "learning" pour une IA de reinforcement '
+                    'learning, "alpha \'k\' " pour une IA de recherche arborescent de profondeur k. \nAjoutez '
+                    '"player 1" pour laisser l\'IA commencer, sinon "player 2" (par défaut vous commencez).'
+                    '\n Pour les mouvements, écrivez simplement les coordonnées "b5".\n Pour relire ce message, '
+                    'écrivez "help"')
                 flag = False
         if (hour, minute) == (10, 31):
             flag = True

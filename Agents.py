@@ -227,11 +227,10 @@ class DiggingGlutton(Player):
 
 class AlphaBeta(Player):
 
-	def __init__(self, depth, team=None, maximize=True):
+	def __init__(self, depth, team=None):
 		super().__init__(team)
 		self.depth = depth
 		self.turn_count = 0
-		self.maximize = maximize
 		self.name = 'AlphaBeta'
 
 	def play(self, board, test=False):
@@ -266,10 +265,6 @@ class AlphaBeta(Player):
 					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
 					max_ = max(max_, val)
 					alpha = max(alpha, max_)
-					print('Maximizing')
-					print(board.update(move, team_val, in_place=False))
-					print(val)
-					print('\n')
 					if alpha >= beta:
 						break
 				return max_
@@ -280,10 +275,6 @@ class AlphaBeta(Player):
 					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
 					min_ = min(min_, val)
 					beta = min(beta, min_)
-					print('Minimizing')
-					print(board.update(move, team_val, in_place=False))
-					print(val)
-					print('\n')
 					if alpha >= beta:
 						break
 				return min_

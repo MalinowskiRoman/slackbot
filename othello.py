@@ -70,7 +70,7 @@ def test_choices():
     board.grid[3,3] = board.grid[4,4] = 1
     print(board)
     alpha_beta_AI2.set_team('black')
-    tree = alpha_beta_AI2.play(board,test=True)
+    tree = alpha_beta_AI2.play(board, test=True)
     print('Begin Branch 0')
     for i in tree[2]:
         print('Begin Branch 1')
@@ -95,4 +95,4 @@ def test_choices():
     print([tree[1]])
     print('\n')
 
-test_choices()
+play_othello1(alpha_beta_AI, human)
