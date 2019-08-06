@@ -120,7 +120,7 @@ def analyse_message(tok=token):
                             player2 = DiggingGlutton(depth=k)
                         elif 'learning' in text.lower():
                             brain = DenseBrain(128)
-                            brain.load_state_dict(torch.load('models/against_glutton_and_self_125.pt'))
+                            brain.load_state_dict(torch.load('models/against_self_and_alpha_beta_44.pt'))
                             player2 = MLAgent(brain)
                         elif 'alpha' in text.lower():
                             try:
@@ -166,8 +166,8 @@ def analyse_message(tok=token):
             print('Pas de messages')
         except KeyError as err:
             print(err)
-    except Exception:
-        print('COULD NOT FIND THE NAME OF THE CHANNEL')
+    except Exception as err:
+        print(err)
         # print(history)
 
 
