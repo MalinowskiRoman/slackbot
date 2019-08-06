@@ -241,22 +241,22 @@ class AlphaBeta(Player):
 		self.turn_count = 0
 		self.name = 'AlphaBeta'
 
-		def play(self, board, test=False):
-			list_moves = board.possible_moves(self.team_val)
-			for move in corners:
-				if move in list_moves:
-					return move
-			if not test:
-				score = []
-				for move in list_moves:
-					score += [self.alpha_beta(board.update(move, self.team_val, in_place=False), self.team_val, self.depth, alpha=-np.inf, beta=np.inf, maximize=False)]
-				return list_moves[score.index(max(score))]
-			else:
-				tree = [board, 0, []]
-				for move in list_moves:
-					tree[2] += [self.alpha_beta_tree(board.update(move, self.team_val, in_place=False), self.team_val, self.depth, alpha=-np.inf, beta=np.inf, branch=[], maximize=False)]
-				tree[1] = max([tree[2][i][1] for i in range(len(tree[2]))])
-				return tree
+	def play(self, board, test=False):
+		list_moves = board.possible_moves(self.team_val)
+		for move in corners:
+			if move in list_moves:
+				return move
+		if not test:
+			score = []
+			for move in list_moves:
+				score += [self.alpha_beta(board.update(move, self.team_val, in_place=False), self.team_val, self.depth, alpha=-np.inf, beta=np.inf, maximize=False)]
+			return list_moves[score.index(max(score))]
+		else:
+			tree = [board, 0, []]
+			for move in list_moves:
+				tree[2] += [self.alpha_beta_tree(board.update(move, self.team_val, in_place=False), self.team_val, self.depth, alpha=-np.inf, beta=np.inf, branch=[], maximize=False)]
+			tree[1] = max([tree[2][i][1] for i in range(len(tree[2]))])
+			return tree
 
 	def alpha_beta(self, board, team_val, depth, alpha, beta, maximize=True):
 		# We have to return the score of the root team (in the algorithm

@@ -9,8 +9,8 @@ import torch
 from Board import Board, Game
 from Agents import MLAgent, DiggingGlutton, Player, DenseBrain, AlphaBeta
 
-token = 'xoxp-684260139683-689311425137-684247936882-151caac50e5f63ad69b6272127ade6a3'
-bot_token = 'xoxb-684260139683-697808802582-aBdjKsw9s19ikbcFrtPpwEP7'
+token = 'xoxp-684260139683-689311425137-719318949542-5af0ff668b20ec75ac94f6046f6e18fd'
+bot_token = 'xoxb-684260139683-697808802582-6HBBUztasU1qIfUavCXSnIap'
 
 channel_name = 'general'
 last_move = ''
@@ -51,7 +51,7 @@ def get_user_name(user, tok=token):
         response = requests.get(url)
         response = response.json()
         return response['user']['real_name']
-    except:
+    except KeyError:
         raise Exception('Could not find the name of the user : {}'.format(user))
 
 
@@ -111,7 +111,7 @@ def analyse_message(tok=token):
                                 player_number = 2
 
                         if 'glutton' in text.lower():
-                            try :
+                            try:
                                 k = int(text.lower()[text.lower().find('glutton') + 8])
                             except IndexError:
                                 k = 2
@@ -165,8 +165,10 @@ def analyse_message(tok=token):
         except IndexError:
             print('Pas de messages')
         except KeyError as err:
+            print(history)
             print(err)
     except Exception as err:
+        print('Exception error')
         print(err)
         # print(history)
 
@@ -344,13 +346,14 @@ def update_counter(name):
 
 '''Slack connection and setup'''
 
-token = 'xoxp-684260139683-689311425137-684247936882-151caac50e5f63ad69b6272127ade6a3'
-bot_token = 'xoxb-684260139683-697808802582-aBdjKsw9s19ikbcFrtPpwEP7'
+token = 'xoxp-684260139683-689311425137-719318949542-5af0ff668b20ec75ac94f6046f6e18fd'
+bot_token = 'xoxb-684260139683-697808802582-6HBBUztasU1qIfUavCXSnIap'
 user_account = 'xoxp-684260139683-689311425137-684247936882-151caac50e5f63ad69b6272127ade6a3'
 bot_id = '<@ULHPSPLH4>'
 
 response = requests.get('https://slack.com/api/conversations.list?token=' + bot_token)
 channels = response.json()
+print(channels)
 for dic in channels['channels']:
     if dic['name'] == channel_name:
         global channel_id

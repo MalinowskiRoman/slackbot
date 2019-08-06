@@ -31,6 +31,7 @@ class Board:
 			return Board(grid)
 
 	def check_line(self, pos, dir, team_val):
+		print(pos, self.grid[pos])
 		if self.grid[pos] != 0:
 			return []
 		i, j = pos
