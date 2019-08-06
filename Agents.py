@@ -1,5 +1,6 @@
 import copy
 import os
+import time
 import numpy as np
 import torch
 import torch.nn as nn
@@ -132,13 +133,18 @@ class MLAgent(Player):
 					'\rEpisode {}, game {} : playing against {}... '.format(n_ep, n_games, adv),
 					end='')
 				games[k] += 1
-				game = Game(self, adv, display_func=None)
+				if np.random.rand() > 0.5:
+					game = Game(self, adv, display_func=None)
+				else:
+					game = Game(adv, self, display_func=None)
 				black, white = game.rollout()
 				win = (white - black > 0)
 				wins[k] += win
 				ep_victories += win
 				n_wins += win
 				self.next_game(white - black)
+				if isinstance(adv, AlphaBeta):
+					adv.reset()
 #				print('Win :)' if win else 'Lost :(')
 			to_disp = []
 			template = ''
@@ -274,10 +280,6 @@ class AlphaBeta(Player):
 					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
 					max_ = max(max_, val)
 					alpha = max(alpha, max_)
-					print('Maximizing')
-					print(board.update(move, team_val, in_place=False))
-					print(val)
-					print('\n')
 					if alpha >= beta:
 						break
 				return max_
@@ -288,10 +290,6 @@ class AlphaBeta(Player):
 					val = self.alpha_beta(board.update(move, team_val, in_place=False), team_val, depth - 1, alpha, beta, not maximize)
 					min_ = min(min_, val)
 					beta = min(beta, min_)
-					print('Minimizing')
-					print(board.update(move, team_val, in_place=False))
-					print(val)
-					print('\n')
 					if alpha >= beta:
 						break
 				return min_
@@ -334,8 +332,6 @@ class AlphaBeta(Player):
 		self.turn_count = 0
 
 
-
-
 class HumanPlayer(Player):
 	def __init__(self, team=None):
 		super().__init__(team)
@@ -365,4 +361,145 @@ class HumanPlayer(Player):
 			else:
 				print('Use a format like "b7" !')
 		return i, j
+
+
+class MCTS(Player):
+	def __init__(self, time):
+		self.name = 'MCTS'
+		self.time = time
+		self.player1 = RandomPlayer()
+		self.player2 = RandomPlayer()
+		self.tree = GameNode(board=Board(), cur_team=-1)
+
+	def expand_tree(self):
+		node = self.tree
+		node.visit_number += 1
+		ctr = 0
+		while not node.is_leaf:
+			ctr += 1
+			if ctr > 100:
+				print(node)
+			node = node.choose_child()
+		node.expand()
+		if not node.is_terminal:
+			try:
+				node = node.choose_child(random=True)
+			except ValueError as err:
+				print(node.children)
+				raise err
+		value = node.simulate_game(self.player1, self.player2)
+		node.update(int(value > 0))
+
+	def play(self, board):
+		self.update_root(board)
+		start = time.time()
+		while time.time() - start < self.time:
+			self.expand_tree()
+		best_move, node = max(self.tree.children.items(), key=lambda child: child[1].visit_number)
+		try:
+			assert board.is_move_possible(best_move, self.team_val)
+		except AssertionError:
+			print(self.tree.children)
+			print(best_move)
+			print(board.possible_moves(self.team_val))
+			print(board.possible_moves(-self.team_val))
+			raise AssertionError
+		self.tree = node
+		self.tree.parent = None
+		return best_move
+
+	def update_root(self, board):
+		if not self.tree.board == board:
+			found = self.tree.look_for_board(board)
+			if found:
+				self.tree = found
+				self.tree.parent = None
+			else:
+				self.tree = GameNode(board, cur_team = self.team_val)
+
+	def set_team(self, team):
+		super().set_team(team)
+		self.tree.root_team = self.team_val
+
+
+class GameNode:
+	def __init__(self, board, parent=None, cur_team=None):
+		self.parent = parent
+		self.board = board
+		self.cur_team = -parent.cur_team if parent else cur_team
+		self.root_team = parent.root_team if parent else cur_team
+		self.value = 0
+		self.is_leaf = True
+		self.is_terminal = False
+		self.children = {}
+		self.visit_number = 0
+
+	def expand(self):
+		assert self.is_leaf
+		possible_moves = self.board.possible_moves(self.cur_team)
+		if possible_moves:
+			self.is_leaf = False
+			self.children = {move: GameNode(parent=self, board=self.board.execute_turn(move, self.cur_team, in_place=False)) for move in possible_moves}
+		else:
+			if self.board.possible_moves(-self.cur_team):
+				self.is_leaf = False
+				node = GameNode(parent=self, board=copy.deepcopy(self.board))
+				self.children = {None: node}
+			else:
+				self.is_terminal = True
+
+	def update(self, value):
+		self.value += value
+		if self.parent:
+			self.parent.update(value)
+
+	def choose_child(self, random=False):
+		if self.is_leaf:
+			raise ValueError("Cannot choose a child from a leaf")
+		nodes = list(self.children.values())
+		values = np.array([self.cur_team*self.root_team*node.value/(1+node.visit_number) for node in nodes])
+		visits = np.array([node.visit_number for node in nodes])
+		distrib = values + np.sqrt(2*self.visit_number/(1+visits))
+		if not random:
+			chosen = nodes[distrib.argmax()]
+		else:
+			chosen = np.random.choice(nodes)
+		chosen.visit_number += 1
+		return chosen
+
+	def simulate_game(self, player1, player2):
+		game = Game(player1, player2, display_func=None, board=copy.deepcopy(self.board), cur_team=self.cur_team)
+		black, white = game.rollout()
+		return self.root_team * (black - white)
+
+	def look_for_board(self, board):
+		for child in self.children.values():
+			if child.board == board:
+				return child
+		for child in self.children.values():
+			found = child.look_for_board(board)
+			if found:
+				return found
+		return None
+
+	def c_str(self, depth=0):
+		tree = '{}{} | {}/{}'.format('\t'*depth, self.cur_team, self.value, self.visit_number)
+		for child in self.children.values():
+			tree += '\n'+child.c_str(depth=depth+1)
+		return tree
+
+	def __str__(self):
+		return self.c_str()
+
+
+class RandomPlayer(Player):
+	def __init__(self):
+		self.name = 'RandomPlayer'
+
+	def play(self, board):
+		moves = board.possible_moves(self.team_val)
+		return moves[np.random.choice(len(moves))]
+
+
+
 

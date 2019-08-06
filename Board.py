@@ -11,10 +11,11 @@ x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
 class Board:
 	directions = [(0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
 
-	def __init__(self, grid=None, display_mode='basic'):
+	def __init__(self, grid=None, display_mode='basic', init=True):
 		self.grid = np.zeros((8,8)) if grid is None else grid
-		self.grid[3,3] = self.grid[4,4] = 1
-		self.grid[3,4] = self.grid[4, 3] = -1
+		if init:
+			self.grid[3,3] = self.grid[4,4] = 1
+			self.grid[3,4] = self.grid[4, 3] = -1
 
 		self.display_mode = display_mode
 
@@ -28,7 +29,7 @@ class Board:
 		else:
 			grid = copy.deepcopy(self.grid)
 			grid.put(to_update, team_val)
-			return Board(grid)
+			return Board(grid, init=False)
 
 	def check_line(self, pos, dir, team_val):
 		if self.grid[pos] != 0:
@@ -68,6 +69,7 @@ class Board:
 
 	def execute_turn(self, pos, team_val, in_place=True):
 		if not self.is_move_possible(pos, team_val):
+			print(self)
 			raise IndexError("Move {} is not allowed".format(pos))
 		else:
 			return self.update(pos, team_val, in_place=in_place)
@@ -323,6 +325,12 @@ class Board:
 			score =  score * team_val
 
 		return score
+
+	def __eq__(self, board):
+		if isinstance(board, Board):
+			return (self.grid == board.grid).all()
+		else:
+			return super().__eq__(board)
 
 class Game:
 	def __init__(self, player1, player2, display_func=print, board = None, cur_team=-1):
