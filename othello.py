@@ -107,14 +107,14 @@ def train(players, length = 10):
 		for i, agent1 in enumerate(players):
 			for j, agent2 in enumerate(players):
 				if i != j:
-					print('\rRound {}/{} - {:.2f}%'.format(k+1, length, 100*(N*i+j+1)/(N**2)), end = '')
+					print('\rRound {}/{} - {:.2f}%'.format(k+1, length, 100*(N*i+j+1)/(N**2)), end='')
 					game = Game(agent1, agent2, display_func=None)
 					agent1.brain.train()
 					agent2.brain.train()
 					black, white = game.rollout()
 					agent1.next_game(white - black)
 					agent2.next_game(black - white)
-		print('\rRound {}/{} - 100%'.format(k+1, length), end = '')
+		print('\rRound {}/{} - 100%'.format(k+1, length), end='')
 		for agent in players:
 			agent.learn()
 			agent.reset()
@@ -132,7 +132,7 @@ def eliminate(players, nb_games=32, ratio=0.3):
 			if i != j:
 				score = 0
 				for k in range(nb_games):
-					print('\r Game {}/{} - Round {}'.format(N*i+j+1, N*N, k), end = '')
+					print('\r Game {}/{} - Round {}'.format(N*i+j+1, N*N, k), end='')
 					game = Game(agent1, agent2, display_func=None)
 					black, white = game.rollout()
 					score += int((white > black)) - int((black > white))
@@ -144,6 +144,8 @@ def eliminate(players, nb_games=32, ratio=0.3):
 	players = players[max(1, int(ratio*len(players))):]
 	print('\n{} players remaining - {}'.format(len(players), [agent.name for agent in players]))
 	return players
+
+
 learning_AI = MLAgent(brain, optimizer=torch.optim.SGD(brain.parameters(), lr=0.01))
 
 alpha_beta_AI = AlphaBeta(depth=2)
@@ -153,9 +155,10 @@ glutton_AI2 = Glutton()
 human = HumanPlayer()
 dig_glutton = DiggingGlutton(depth=2)
 
+
 # player can be from classes AlphaBeta, Glutton, HumanPlayer
 def play_othello1(player1, player2, display=True):
-    # white is -1
+	# white is -1
     # black is 1
     board = Board()
     player1.set_team('white')

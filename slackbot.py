@@ -9,8 +9,10 @@ import torch
 from Board import Board, Game
 from Agents import MLAgent, DiggingGlutton, Player, DenseBrain, AlphaBeta
 
-token = 'xoxp-684260139683-689311425137-719318949542-5af0ff668b20ec75ac94f6046f6e18fd'
-bot_token = 'xoxb-684260139683-697808802582-6HBBUztasU1qIfUavCXSnIap'
+with open('C:/Users/roman/Desktop/Compteur.txt', 'r') as f:
+    token = f.readline()
+    bot_token = f.readline()
+
 
 channel_name = 'general'
 last_move = ''

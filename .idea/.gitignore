@@ -2,3 +2,5 @@
 /workspace.xml
 __pycache__/
 .DS_Store
+/othello.py
+/token.txt
