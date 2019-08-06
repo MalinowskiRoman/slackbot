@@ -54,6 +54,8 @@ class Board:
 		return mem + [pos] if mem else []
 
 	def is_move_possible(self, pos, team_val):
+		if not isinstance(pos, tuple):
+			return False
 		for dir in self.directions:
 			if self.check_line(pos, dir, team_val):
 				return True

@@ -4,7 +4,8 @@ import numpy as np
 import torch
 import json
 import os
-from Agents import MLAgent, DenseBrain, HumanPlayer, Glutton, AlphaBeta, DiggingGlutton
+import time
+from Agents import MLAgent, DenseBrain, HumanPlayer, Glutton, AlphaBeta, DiggingGlutton, MCTS, StateActionPolicy, Alpha, RandomPlayer
 from Board import Board, Game
 
 class Arena:
@@ -72,168 +73,46 @@ class Arena:
 
 
 
-arena = Arena(32, 'arena')
-players = []
-params = [{} for i in range(32)]
-with open('arena/params.txt', 'r') as f:
-	for line in f:
-		i = int(line[10:12])
-		dim = int(line[25:28])
-		dropout = float(line[39:43])
-		lr = float(line[49:55])
-		momentum = float(line[67:71])
-		params[i] = {'dim': dim, 'dropout': dropout, 'lr': lr, 'momentum': momentum}
-for i in range(32):
-	dict = torch.load('arena/agent_{}.pt'.format(i))
-	brain = DenseBrain(params[i]['dim'], params[i]['dropout'])
-	brain.load_state_dict(dict['model'])
-	opt = torch.optim.SGD(brain.parameters(), lr=params[i]['lr'], momentum=params[i]['momentum'])
-	agent = MLAgent(brain, opt)
-	players.append(agent)
-arena.players = players
-with open('arena/records.json', 'r') as f:
-	arena.records = json.load(f)
-arena.wander()
-
-
-
-
-
-def train(players, length = 10):
-	#every player meet every other length times
-	print('Train phase !')
-	N = len(players)
-	for k in range(length):
-		for i, agent1 in enumerate(players):
-			for j, agent2 in enumerate(players):
-				if i != j:
-					print('\rRound {}/{} - {:.2f}%'.format(k+1, length, 100*(N*i+j+1)/(N**2)), end = '')
-					game = Game(agent1, agent2, display_func=None)
-					agent1.brain.train()
-					agent2.brain.train()
-					black, white = game.rollout()
-					agent1.next_game(white - black)
-					agent2.next_game(black - white)
-		print('\rRound {}/{} - 100%'.format(k+1, length), end = '')
-		for agent in players:
-			agent.learn()
-			agent.reset()
-	print('')
-
-
-def eliminate(players, nb_games=32, ratio=0.3):
-	print('Turnament phase !')
-	for agent in players:
-		agent.brain.eval()
-		agent.nb_wins = 0
-	N = len(players)
-	for i, agent1 in enumerate(players):
-		for j, agent2 in enumerate(players):
-			if i != j:
-				score = 0
-				for k in range(nb_games):
-					print('\r Game {}/{} - Round {}'.format(N*i+j+1, N*N, k), end = '')
-					game = Game(agent1, agent2, display_func=None)
-					black, white = game.rollout()
-					score += int((white > black)) - int((black > white))
-				if score > 0:
-					agent1.nb_wins += 1
-				else:
-					agent2.nb_wins += 1
-	players.sort(key = lambda agent: agent.nb_wins)
-	players = players[max(1, int(ratio*len(players))):]
-	print('\n{} players remaining - {}'.format(len(players), [agent.name for agent in players]))
-	return players
-learning_AI = MLAgent(brain, optimizer=torch.optim.SGD(brain.parameters(), lr=0.01))
+# arena = Arena(32, 'arena')
+# players = []
+# params = [{} for i in range(32)]
+# with open('arena/params.txt', 'r') as f:
+# 	for line in f:
+# 		i = int(line[10:12])
+# 		dim = int(line[25:28])
+# 		dropout = float(line[39:43])
+# 		lr = float(line[49:55])
+# 		momentum = float(line[67:71])
+# 		params[i] = {'dim': dim, 'dropout': dropout, 'lr': lr, 'momentum': momentum}
+# for i in range(32):
+# 	dict = torch.load('arena/agent_{}.pt'.format(i))
+# 	brain = DenseBrain(params[i]['dim'], params[i]['dropout'])
+# 	brain.load_state_dict(dict['model'])
+# 	opt = torch.optim.SGD(brain.parameters(), lr=params[i]['lr'], momentum=params[i]['momentum'])
+# 	agent = MLAgent(brain, opt)
+# 	players.append(agent)
+# arena.players = players
+# with open('arena/records.json', 'r') as f:
+# 	arena.records = json.load(f)
+# arena.wander()
 
 alpha_beta_AI = AlphaBeta(depth=2)
-alpha_beta_AI2 = AlphaBeta(depth=2)
-glutton_AI = Glutton()
-glutton_AI2 = Glutton()
-human = HumanPlayer()
-dig_glutton = DiggingGlutton(depth=2)
+explorer = MCTS(time = 5.)
+network = StateActionPolicy(hidden_size=128, dropout=0.3)
+network.load_state_dict(torch.load('alpha.pt'))
+optimizer = torch.optim.SGD(network.parameters(), lr=0.01, momentum=0.8)
+alpha = Alpha(network, time=0.2, optimizer=optimizer, temperature=0.5)
+alpha_2 = Alpha(network, time=0.2, optimizer=optimizer)
+random = RandomPlayer()
 
-# player can be from classes AlphaBeta, Glutton, HumanPlayer
-def play_othello1(player1, player2, display=True):
-    # white is -1
-    # black is 1
-    board = Board()
-    player1.set_team('white')
-    player2.set_team('black')
-    team_val = -1
-    while True:
-        if display:
-            print('')
-            print(board)
-        if not board.possible_moves(team_val):
-            if not board.possible_moves(-team_val):
-                break
-            else:
-                team_val = -team_val
-                continue
-        if team_val == -1:
-            i, j = player1.play(board)
-            if display: print(str(player1) + ': ' + chr(j + ord('a')) + str(i+1))
-        else:
-            i, j = player2.play(board)
-            if display: print(str(player2) + ': ' + chr(j + ord('a')) + str(i+1))
-        board.execute_turn((i,j), team_val)
-        team_val = -team_val
-    if display: print(board)
-    # print('////////////////////////////')
-    # board.definitive_coins().print()
-    # print('////////////////////////////')
-    black, white = board.count_score()
-    if display: print('Final score : \nWhite Team ({}) : {}\nBlack team ({}) : {}'.format(player1, white, player2, black))
-    return white, black
-
-
-# adversaries = ['self', DiggingGlutton(depth=0), DiggingGlutton(depth=1)]
-# #brain.train()
-# #learning_AI.train(adversaries, 10)
-#
-# brain.eval()
-# game = Game(learning_AI, alpha_beta_AI)
-# game.rollout()
-def turnament(players, nb_train_rounds = 16, nb_eval_rounds = 16):
-	while len(players) > 1:
-		train(players, nb_train_rounds)
-		players = eliminate(players, nb_eval_rounds)
-		winner = players[0]
-		print('Done! Winner is {}'.format(winner.name))
-		torch.save(winner.brain.state_dict(), 'models/winner_brain.pt')
-		return winner
-
-# play_othello1(alpha_beta_AI, alpha_beta_AI2)
-def test_choices():
-    board = Board()
-    board.grid[2,1] = board.grid[2,2] = board.grid[2,3] = -1
-    board.grid[3,4] = board.grid[4,3] = -1
-    board.grid[3,3] = board.grid[4,4] = 1
-    print(board)
-    alpha_beta_AI2.set_team('black')
-    tree = alpha_beta_AI2.play(board,test=True)
-    print('Begin Branch 0')
-    for i in tree[2]:
-        print('Begin Branch 1')
-        for j in i[2]:
-            print('Begin Branch 2')
-            for k in j[2]:
-                print(k[0])
-                print(k[1])
-                print('')
-            print('end_branch 2')
-            print('')
-            print(j[0])
-            print(j[1])
-            print('')
-        print('end_branch 1')
-        print('')
-        print(i[0])
-        print(i[1])
-        print('')
-    print('end_branch 0')
-    print(tree[0])
-    print([tree[1]])
-    print('\n')
+for k in range(100):
+	for i in range(32):
+		print('\rEpisode {} - Game {}'.format(k+1, i+1), end = '')
+		game = Game(alpha, alpha_2, display_func=None)
+		black, white = game.rollout()
+		alpha.next_game(white - black)
+		alpha_2.next_game(black - white)
+	alpha.learn()
+	alpha_2.learn()
+	torch.save(network.state_dict(), 'alpha.pt')
 
