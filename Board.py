@@ -8,49 +8,50 @@ c_square = [(0, 1), (0, 7), (1, 0), (1, 7), (6, 0), (6, 7), (7, 1), (7, 6)]
 global x_square
 x_square = [(1, 1), (6, 6), (1, 6), (6, 1)]
 
+
 class Board:
-	directions = [(0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
+    directions = [(0, 1), (1, 0), (-1, 0), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]
 
-	def __init__(self, grid=None, display_mode='basic'):
-		self.grid = np.zeros((8,8)) if grid is None else grid
-		self.grid[3,3] = self.grid[4,4] = 1
-		self.grid[3,4] = self.grid[4, 3] = -1
+    def __init__(self, grid=None, display_mode='basic'):
+        self.grid = np.zeros((8, 8)) if grid is None else grid
+        self.grid[3, 3] = self.grid[4, 4] = 1
+        self.grid[3, 4] = self.grid[4, 3] = -1
 
-		self.display_mode = display_mode
+        self.display_mode = display_mode
 
-	def __getitem__(self, item):
-		return self.grid[item]
+    def __getitem__(self, item):
+        return self.grid[item]
 
-	def update(self, pos, team_val, in_place=True):
-		to_update = [8*x+y for x,y in self.check_lines(pos, team_val)]
-		if in_place:
-			self.grid.put(to_update, team_val)
-		else:
-			grid = copy.deepcopy(self.grid)
-			grid.put(to_update, team_val)
-			return Board(grid)
+    def update(self, pos, team_val, in_place=True):
+        to_update = [8*x+y for x,y in self.check_lines(pos, team_val)]
+        if in_place:
+            self.grid.put(to_update, team_val)
+        else:
+            grid = copy.deepcopy(self.grid)
+            grid.put(to_update, team_val)
+            return Board(grid)
 
-	def check_line(self, pos, dir, team_val):
-		if self.grid[pos] != 0:
-			return []
-		i, j = pos
-		e1, e2 = dir
-		mem = []
-		i += e1
-		j += e2
-		while 0 <= i < 8 and 0 <= j < 8 and self.grid[i, j] == -team_val:
-			mem.append((i, j))
-			i += e1
-			j += e2
-		if 0 <= i < 8 and 0 <= j < 8 and self.grid[i, j] == team_val:
-			return mem
-		return []
+    def check_line(self, pos, dir, team_val):
+        if self.grid[pos] != 0:
+            return []
+        i, j = pos
+        e1, e2 = dir
+        mem = []
+        i += e1
+        j += e2
+        while 0 <= i < 8 and 0 <= j < 8 and self.grid[i, j] == -team_val:
+            mem.append((i, j))
+            i += e1
+            j += e2
+        if 0 <= i < 8 and 0 <= j < 8 and self.grid[i, j] == team_val:
+            return mem
+        return []
 
-	def check_lines(self, pos, team_val):
-		mem = []
-		for dir in self.directions:
-			mem.extend(self.check_line(pos, dir, team_val))
-		return mem + [pos] if mem else []
+    def check_lines(self, pos, team_val):
+        mem = []
+        for dir in self.directions:
+            mem.extend(self.check_line(pos, dir, team_val))
+        return mem + [pos] if mem else []
 
     def is_move_possible(self, pos, team_val):
         if not isinstance(pos, tuple):
@@ -70,7 +71,6 @@ class Board:
 
     def execute_turn(self, pos, team_val, in_place=True):
         if not self.is_move_possible(pos, team_val):
-            print(self)
             raise IndexError("Move {} is not allowed".format(pos))
         else:
             return self.update(pos, team_val, in_place=in_place)
@@ -123,8 +123,8 @@ class Board:
     # rhe flag bool detects if we got into the for loop or not
     def definitive_coins(self):
         definitive = Board()
-        definitive.grid[3, 3] = definitive.grid[4, 4] = 0
-        definitive.grid[3, 4] = definitive.grid[4, 3] = 0
+        definitive.grid[3,3] = definitive.grid[4,4] = 0
+        definitive.grid[3,4] = definitive.grid[4,3] = 0
 
         # UL
         lim1, lim2 = 8, 8
@@ -284,8 +284,8 @@ class Board:
         return definitive
 
     def compute_score(self, team_val, maximize):
-        # black, white = self.count_score()
-        # disc_diff = 100 * (black - white) / (black + white)
+        black, white = self.count_score()
+        disc_diff = 100 * (black - white) / (black + white)
 
         black_move, white_move = len(self.possible_moves(1)), len(self.possible_moves(-1))
         move_diff = 100 * (black_move - white_move) / (black_move + white_move + 1)
@@ -318,14 +318,20 @@ class Board:
                 x_white += 1
         x_diff = 100 * (x_black - x_white) / (x_black + c_white + 1)
 
-        score = 2 * move_diff + 100 * corner_diff - 100 * x_diff - 50 * c_diff + 30 * def_diff
+        turn = black + white
 
-		if maximize:
-			score = - score * team_val
-		else:
-			score = score * team_val
+        score = 2 * move_diff * max(1, 12 - turn) + 100 * corner_diff - 100 * x_diff - 50 * c_diff + 30 * def_diff + disc_diff * max(0, turn - 58) * 100
 
-		return score
+        if turn == 64:
+            score = disc_diff * 100
+
+        if maximize:
+            score = - score * team_val
+        else:
+            score = score * team_val
+
+        return score
+
 
     def __eq__(self, board):
         if isinstance(board, Board):
@@ -370,11 +376,7 @@ class Game:
     def end(self):
         black, white = self.board.count_score()
         if self.display_func:
-            self.display_func(
-                'Game is finished. Final score : \nWhite Team ({}) : {}\nBlack team ({}) : {}'.format(self.player1,
-                                                                                                      white,
-                                                                                                      self.player2,
-                                                                                                      black))
+            self.display_func('Game is finished. Final score : \nWhite Team ({}) : {}\nBlack team ({}) : {}'.format(self.player1, white, self.player2, black))
         return black, white
 
     def rollout(self):
@@ -382,3 +384,4 @@ class Game:
         while not scores:
             scores = self.next()
         return scores
+

@@ -90,24 +90,23 @@ class MLAgent(Player):
         self.reward_history = []
         self.name = 'LearningAI' if not name else name
 
-    def play(self, board):
-        valid_moves = board.possible_moves(self.team_val)
-        valid = torch.zeros(64).scatter(0, torch.LongTensor([8 * x + y for x, y in valid_moves]), 1).type(
-            torch.ByteTensor)
-        board = convert_board(board, self.team_val)
-        scores = self.brain(board)
-        scores = torch.where(valid, scores, torch.full((64,), 0))
-        sampler = torch.distributions.categorical.Categorical(probs=scores)
-        move = sampler.sample()
-        ctr = 0
-        while not valid[move.item()]:
-            if ctr > 5:
-                print(valid)
-                print(scores)
-                print([self.brain.parameters()])
-            move = sampler.sample()
-        self.move_history[-1].append(sampler.log_prob(move).unsqueeze(0))
-        return move.item() // 8, move.item() % 8
+	def play(self, board):
+		valid_moves = board.possible_moves(self.team_val)
+		valid = torch.zeros(64).scatter(0, torch.LongTensor([8*x+y for x, y in valid_moves]), 1).type(torch.ByteTensor)
+		board = convert_board(board, self.team_val)
+		scores = self.brain(board)
+		scores = torch.where(valid, scores, torch.full((64,), -1000))
+		sampler = torch.distributions.categorical.Categorical(logits=scores)
+		move = sampler.sample()
+		ctr = 0
+		while not valid[move.item()]:
+			if ctr > 5:
+				print(valid)
+				print(scores)
+				print([self.brain.parameters()])
+			move = sampler.sample()
+		self.move_history[-1].append(sampler.log_prob(move).unsqueeze(0))
+		return move.item() // 8, move.item() % 8
 
     def compute_gradients(self):
         self.brain.zero_grad()
@@ -349,8 +348,6 @@ class AlphaBeta(Player):
 
     def reset(self):
         self.turn_count = 0
-
-
 
 
 class HumanPlayer(Player):
