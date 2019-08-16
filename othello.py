@@ -1,12 +1,19 @@
 '''Created by Roman Malinowski '''
 import copy
 import numpy as np
-import torch
+import logging
 import json
 import os
 import time
+
+import torch
+
 from Agents import MLAgent, DenseBrain, HumanPlayer, Glutton, AlphaBeta, DiggingGlutton, MCTS, StateActionPolicy, Alpha, RandomPlayer
 from Board import Board, Game
+
+
+logging.basicConfig(encoding='utf-8', level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s", datefmt='%Y/%m/%d %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 
 class Arena:
@@ -29,7 +36,7 @@ class Arena:
 		for episode in range(1, time):
 			for i in range(self.nb_players):
 				j = self.choose_fight(i)
-				print('\rEpisode {}, game {}/{} : AI {} vs AI {}'.format(episode, i+1, self.nb_players, i, j), end='')
+				logger.info('\rEpisode {}, game {}/{} : AI {} vs AI {}'.format(episode, i+1, self.nb_players, i, j), end='')
 				game = Game(self.players[i], self.players[j], display_func=None)
 				black, white = game.rollout()
 				wins, games = self.records[i][j]
@@ -41,7 +48,7 @@ class Arena:
 				for q, agent in enumerate(self.players):
 					agent.learn()
 					agent.reset()
-				print('')
+				logger.info('')
 				self.print_charts()
 				if (episode // learn_every) % save_every == 0:
 					for i in range(self.nb_players):
@@ -70,7 +77,7 @@ class Arena:
 			dropout = agent.brain.drop.p
 			lr = agent.optimizer.defaults['lr']
 			momentum = agent.optimizer.defaults['momentum']
-			print('{:<2}. Agent {:<2} [Inner dim: {:<3}, dropout: {:<3.2f}, lr: {:<5.4f}, momentum: {:<3.2f}]: {:>4} wins ({} games)'.format(rk, i, dim, dropout, lr, momentum, wins, games))
+			logger.info('{:<2}. Agent {:<2} [Inner dim: {:<3}, dropout: {:<3.2f}, lr: {:<5.4f}, momentum: {:<3.2f}]: {:>4} wins ({} games)'.format(rk, i, dim, dropout, lr, momentum, wins, games))
 
 
 # arena = Arena(32, 'arena')
@@ -99,28 +106,28 @@ class Arena:
 
 def train(players, length = 10):
 	# every player meet every other length times
-	print('Train phase !')
+	logger.info('Train phase !')
 	N = len(players)
 	for k in range(length):
 		for i, agent1 in enumerate(players):
 			for j, agent2 in enumerate(players):
 				if i != j:
-					print('\rRound {}/{} - {:.2f}%'.format(k+1, length, 100*(N*i+j+1)/(N**2)), end='')
+					logger.info('\rRound {}/{} - {:.2f}%'.format(k+1, length, 100*(N*i+j+1)/(N**2)), end='')
 					game = Game(agent1, agent2, display_func=None)
 					agent1.brain.train()
 					agent2.brain.train()
 					black, white = game.rollout()
 					agent1.next_game(white - black)
 					agent2.next_game(black - white)
-		print('\rRound {}/{} - 100%'.format(k+1, length), end='')
+		logger.info('\rRound {}/{} - 100%'.format(k+1, length), end='')
 		for agent in players:
 			agent.learn()
 			agent.reset()
-	print('')
+	logger.info('')
 
 
 def eliminate(players, nb_games=32, ratio=0.3):
-	print('Turnament phase !')
+	logger.info('Turnament phase !')
 	for agent in players:
 		agent.brain.eval()
 		agent.nb_wins = 0
@@ -130,7 +137,7 @@ def eliminate(players, nb_games=32, ratio=0.3):
 			if i != j:
 				score = 0
 				for k in range(nb_games):
-					print('\r Game {}/{} - Round {}'.format(N*i+j+1, N*N, k), end='')
+					logger.info('\r Game {}/{} - Round {}'.format(N*i+j+1, N*N, k), end='')
 					game = Game(agent1, agent2, display_func=None)
 					black, white = game.rollout()
 					score += int((white > black)) - int((black > white))
@@ -140,7 +147,7 @@ def eliminate(players, nb_games=32, ratio=0.3):
 					agent2.nb_wins += 1
 	players.sort(key = lambda agent: agent.nb_wins)
 	players = players[max(1, int(ratio*len(players))):]
-	print('\n{} players remaining - {}'.format(len(players), [agent.name for agent in players]))
+	logger.info('\n{} players remaining - {}'.format(len(players), [agent.name for agent in players]))
 	return players
 
 
@@ -164,8 +171,8 @@ def play_othello1(player1, player2, display=True):
 	team_val = -1
 	while True:
 		if display:
-			print('')
-			print(board)
+			logger.info('')
+			logger.info(board)
 		if not board.possible_moves(team_val):
 			if not board.possible_moves(-team_val):
 				break
@@ -174,18 +181,18 @@ def play_othello1(player1, player2, display=True):
 				continue
 		if team_val == -1:
 			i, j = player1.play(board)
-			if display: print(str(player1) + ': ' + chr(j + ord('a')) + str(i+1))
+			if display: logger.info(str(player1) + ': ' + chr(j + ord('a')) + str(i+1))
 		else:
 			i, j = player2.play(board)
-			if display: print(str(player2) + ': ' + chr(j + ord('a')) + str(i+1))
+			if display: logger.info(str(player2) + ': ' + chr(j + ord('a')) + str(i+1))
 		board.execute_turn((i,j), team_val)
 		team_val = -team_val
-	if display: print(board)
-	# print('////////////////////////////')
+	if display: logger.info(board)
+	# logger.info('////////////////////////////')
 	# board.definitive_coins().print()
-	# print('////////////////////////////')
+	# logger.info('////////////////////////////')
 	black, white = board.count_score()
-	if display: print('Final score : \nWhite Team ({}) : {}\nBlack team ({}) : {}'.format(player1, white, player2, black))
+	if display: logger.info('Final score : \nWhite Team ({}) : {}\nBlack team ({}) : {}'.format(player1, white, player2, black))
 	return white, black
 
 
@@ -201,7 +208,7 @@ def tournament(players, nb_train_rounds = 16, nb_eval_rounds = 16):
 		train(players, nb_train_rounds)
 		players = eliminate(players, nb_eval_rounds)
 		winner = players[0]
-		print('Done! Winner is {}'.format(winner.name))
+		logger.info('Done! Winner is {}'.format(winner.name))
 		torch.save(winner.brain.state_dict(), 'models/winner_brain.pt')
 		return winner
 
@@ -212,29 +219,29 @@ def test_choices():
 	board.grid[2,1] = board.grid[2,2] = board.grid[2,3] = -1
 	board.grid[3,4] = board.grid[4,3] = -1
 	board.grid[3,3] = board.grid[4,4] = 1
-	print(board)
+	logger.info(board)
 	alpha_beta_AI2.set_team('black')
 	tree = alpha_beta_AI2.play(board, test=True)
-	print('Begin Branch 0')
+	logger.info('Begin Branch 0')
 	for i in tree[2]:
-		print('Begin Branch 1')
+		logger.info('Begin Branch 1')
 		for j in i[2]:
-			print('Begin Branch 2')
+			logger.info('Begin Branch 2')
 			for k in j[2]:
-				print(k[0])
-				print(k[1])
-				print('')
-			print('end_branch 2')
-			print('')
-			print(j[0])
-			print(j[1])
-			print('')
-		print('end_branch 1')
-		print('')
-		print(i[0])
-		print(i[1])
-		print('')
-	print('end_branch 0')
-	print(tree[0])
-	print([tree[1]])
-	print('\n')
+				logger.info(k[0])
+				logger.info(k[1])
+				logger.info('')
+			logger.info('end_branch 2')
+			logger.info('')
+			logger.info(j[0])
+			logger.info(j[1])
+			logger.info('')
+		logger.info('end_branch 1')
+		logger.info('')
+		logger.info(i[0])
+		logger.info(i[1])
+		logger.info('')
+	logger.info('end_branch 0')
+	logger.info(tree[0])
+	logger.info([tree[1]])
+	logger.info('\n')

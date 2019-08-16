@@ -1,20 +1,16 @@
-import slack
 import random
 import requests
 import datetime
 import time
+
 import praw
 import calendar
 import torch
+import slack
+
 from Board import Board, Game
 from Agents import MLAgent, DiggingGlutton, Player, DenseBrain, AlphaBeta
 
-with open('token.txt', 'r') as f:
-    token = f.readline()
-    token = token[:-1]
-    bot_token = f.readline()
-
-channel_name: str = 'general'
 
 
 def transform(message):
@@ -244,100 +240,107 @@ def update_counter(name):
 
 '''Slack connection and setup'''
 
-
-user_account = 'xoxp-684260139683-689311425137-684247936882-151caac50e5f63ad69b6272127ade6a3'
-bot_id = '<@ULHPSPLH4>'
-response = requests.get('https://slack.com/api/conversations.list?token=' + bot_token)
-channels = response.json()
-print(channels)
-for dic in channels['channels']:
-    if dic['name'] == channel_name:
-        channel_id = dic['id']
-        print('Channel id : ' + channel_id)
-
-# install slackclient if WebClient is not recognized
-client = slack.WebClient(token=bot_token)
-
-if client.rtm_connect():
-    print("Starter Bot connected and running!")
-    # Read bot's user ID by calling Web API method `auth.test`
-    starterbot_id = client.api_call("auth.test")["user_id"]
-    bot_id = '<@' + starterbot_id + '>'
-    print('Bot ID : ' + bot_id)
-else:
-    print("Connection failed. Exception traceback printed above.")
-
-'''Reddit connection and setup'''
-reddit = praw.Reddit(client_id='oAS5--tyAeKDvg',
-                     client_secret='HFYIvgFoe9LyKH_JqLPeMW3XmtE',
-                     user_agent='redditBotScraper',
-                     username='slackSmartBuild',
-                     password='slackSmartBuild')
-subreddit = reddit.subreddit('copypasta')
-new_subreddit = subreddit.new()
-
-flag = True
-now = datetime.datetime.now()
-mem = now.hour
-while True:
-    # try:
-    analyse_message()
-
+if __name__=="__main__":
+    with open('token.txt', 'r') as f:
+        token = f.readline()
+        token = token[:-1]
+        bot_token = f.readline()
+    
+    channel_name: str = 'general'
+    
+    user_account = sys.argv[1]
+    bot_id = sys.argv[2]
+    response = requests.get('https://slack.com/api/conversations.list?token=' + bot_token)
+    channels = response.json()
+    print(channels)
+    for dic in channels['channels']:
+        if dic['name'] == channel_name:
+            channel_id = dic['id']
+            print('Channel id : ' + channel_id)
+    
+    # install slackclient if WebClient is not recognized
+    client = slack.WebClient(token=bot_token)
+    
+    if client.rtm_connect():
+        print("Starter Bot connected and running!")
+        # Read bot's user ID by calling Web API method `auth.test`
+        starterbot_id = client.api_call("auth.test")["user_id"]
+        bot_id = '<@' + starterbot_id + '>'
+        print('Bot ID : ' + bot_id)
+    else:
+        print("Connection failed. Exception traceback printed above.")
+    
+    '''Reddit connection and setup'''
+    reddit = praw.Reddit(client_id='oAS5--tyAeKDvg',
+                         client_secret=sys.argv[3],
+                         user_agent='redditBotScraper',
+                         username=sys.argv[4],
+                         password=sys.argv[5])
+    subreddit = reddit.subreddit('copypasta')
+    new_subreddit = subreddit.new()
+    
+    flag = True
     now = datetime.datetime.now()
-    day = calendar.weekday(now.year, now.month, now.day)
-
-    hour, minute = now.hour, now.minute
-
-    if day not in ['Saturday', 'Sunday']:
-        if hour in range(10, 18) and mem != hour:
-            mem = hour
-            for submission in subreddit.new():
-                write_message(submission.title + '\n' + '\n' + submission.selftext)
-                break
-
-        if (hour, minute) == (16, 36):
-            if flag:
-                write_message('@Mathieu @Vadim' + transform("  Ecrivez un mail pour l'hebreu bande de batards !"))
-                flag = False
-        if (hour, minute) == (16, 37):
-            flag = True
-
-        if (hour, minute) == (12, 30):
-            if flag:
-                write_message(transform("On va manger ? J'ai faaaaaim :pickle:"))
-                flag = False
-        if (hour, minute) == (12, 31):
-            flag = True
-
-        if (hour, minute) == (10, 30):
-            if flag:
-                write_message(
-                    'Petit rappel des commandes :\nPour que je recopie bizarrement votre message, écrivez "@Bob'
-                    ' mon message"\nPour rajouter un point au compteur de vouvoiement, écrivez "Kubat" ainsi que '
-                    '"Nico" ou "Maxime" dans le même message. J\'ignore les majuscules :wink: \nPour commencer une'
-                    ' partie d\'Othello contre un autre membre du slack, écrivez "othello", puis votre adversaire '
-                    'écrit "othello joueur 2". \nPour jouer contre une IA, écrivez "othello" suivi de '
-                    '"glutton \'k\' " pour un glouton de profondeur k, "learning" pour une IA de reinforcement '
-                    'learning, "alpha \'k\' " pour une IA de recherche arborescent de profondeur k. \nAjoutez '
-                    '"player 1" pour laisser l\'IA commencer, sinon "player 2" (par défaut vous commencez).'
-                    '\n Pour les mouvements, écrivez simplement les coordonnées "b5".\n Pour relire ce message, '
-                    'écrivez "help"')
-                flag = False
-        if (hour, minute) == (10, 31):
-            flag = True
-
-        if (hour, minute) == (18, 0):
-            if flag:
-                write_message(transform("La journééééeeee est finiiiiie\nVous êtes officellement autorisés à jouer à "
-                                        "Smash.\nQue le meilleur gagne !"))
-                flag = False
-        if (hour, minute) == (18, 1):
-            flag = True
-
-        if (hour, minute) == (9, 0):
-            if flag:
-                write_message(transform("La journée commence, on prend son café et on y va !"))
-                flag = False
-        if (hour, minute) == (9, 1):
-            flag = True
-        time.sleep(0.5)
+    mem = now.hour
+    while True:
+        # try:
+        analyse_message()
+    
+        now = datetime.datetime.now()
+        day = calendar.weekday(now.year, now.month, now.day)
+    
+        hour, minute = now.hour, now.minute
+    
+        if day not in ['Saturday', 'Sunday']:
+            if hour in range(10, 18) and mem != hour:
+                mem = hour
+                for submission in subreddit.new():
+                    write_message(submission.title + '\n' + '\n' + submission.selftext)
+                    break
+    
+            if (hour, minute) == (16, 36):
+                if flag:
+                    write_message('@Mathieu @Vadim' + transform("  Ecrivez un mail pour l'hebreu !"))
+                    flag = False
+            if (hour, minute) == (16, 37):
+                flag = True
+    
+            if (hour, minute) == (12, 30):
+                if flag:
+                    write_message(transform("On va manger ? J'ai faaaaaim :pickle:"))
+                    flag = False
+            if (hour, minute) == (12, 31):
+                flag = True
+    
+            if (hour, minute) == (10, 30):
+                if flag:
+                    write_message(
+                        'Petit rappel des commandes :\nPour que je recopie bizarrement votre message, écrivez "@Bob'
+                        ' mon message"\nPour rajouter un point au compteur de vouvoiement, écrivez "Kubat" ainsi que '
+                        '"Nico" ou "Maxime" dans le même message. J\'ignore les majuscules :wink: \nPour commencer une'
+                        ' partie d\'Othello contre un autre membre du slack, écrivez "othello", puis votre adversaire '
+                        'écrit "othello joueur 2". \nPour jouer contre une IA, écrivez "othello" suivi de '
+                        '"glutton \'k\' " pour un glouton de profondeur k, "learning" pour une IA de reinforcement '
+                        'learning, "alpha \'k\' " pour une IA de recherche arborescent de profondeur k. \nAjoutez '
+                        '"player 1" pour laisser l\'IA commencer, sinon "player 2" (par défaut vous commencez).'
+                        '\n Pour les mouvements, écrivez simplement les coordonnées "b5".\n Pour relire ce message, '
+                        'écrivez "help"')
+                    flag = False
+            if (hour, minute) == (10, 31):
+                flag = True
+    
+            if (hour, minute) == (18, 0):
+                if flag:
+                    write_message(transform("La journééééeeee est finiiiiie\nVous êtes officellement autorisés à jouer à "
+                                            "Smash.\nQue le meilleur gagne !"))
+                    flag = False
+            if (hour, minute) == (18, 1):
+                flag = True
+    
+            if (hour, minute) == (9, 0):
+                if flag:
+                    write_message(transform("La journée commence, on prend son café et on y va !"))
+                    flag = False
+            if (hour, minute) == (9, 1):
+                flag = True
+            time.sleep(0.5)

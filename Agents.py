@@ -1,12 +1,16 @@
 import copy
+import logging
 import os
 import numpy as np
-import os
 import time
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from Board import Board, Game
+
+logging.basicConfig(encoding='utf-8', level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s", datefmt='%Y/%m/%d %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 global corners
 corners = [(0, 0), (0, 7), (7, 0), (7, 7)]
@@ -101,9 +105,9 @@ class MLAgent(Player):
 		ctr = 0
 		while not valid[move.item()]:
 			if ctr > 5:
-				print(valid)
-				print(scores)
-				print([self.brain.parameters()])
+				logger.info(valid)
+				logger.info(scores)
+				logger.info([self.brain.parameters()])
 			move = sampler.sample()
 		self.move_history[-1].append(sampler.log_prob(move).unsqueeze(0))
 		return move.item() // 8, move.item() % 8
@@ -147,7 +151,7 @@ class MLAgent(Player):
             for ep in range(episode_length):
                 n_games += 1
                 k, adv = self.select_adversary(adversaries, wins, games, n_ep, path, save_name)
-                print(
+                logger.info(
                     '\rEpisode {}, game {} : playing against {}... '.format(n_ep, n_games, adv),
                     end='')
                 games[k] += 1
@@ -163,7 +167,7 @@ class MLAgent(Player):
                 self.next_game(white - black)
                 if isinstance(adv, AlphaBeta):
                     adv.reset()
-            #				print('Win :)' if win else 'Lost :(')
+            #				logger.info('Win :)' if win else 'Lost :(')
             to_disp = []
             template = ''
             for i in range(len(wins)):
@@ -173,8 +177,8 @@ class MLAgent(Player):
                 template += '{}: {}/{} | '
             template += 'Total : {totwin}/{total}'
             self.learn()
-            print('\nEpisode {} finished, {} victories'.format(n_ep, ep_victories))
-            print(template.format(*to_disp, totwin=n_wins, total=n_games))
+            logger.info('\nEpisode {} finished, {} victories'.format(n_ep, ep_victories))
+            logger.info(template.format(*to_disp, totwin=n_wins, total=n_games))
             self.reset()
             torch.save(self.brain.state_dict(), os.path.join(path, '{}_{}.pt'.format(save_name, n_ep)))
 
@@ -223,16 +227,15 @@ class DiggingGlutton(Player):
 		return move
 
     def get_score(self, board, depth=2):
-        #		print('Depth : {}'.format(depth))
+        #		logger.info('Depth : {}'.format(depth))
         best_score = -64
         my_moves = board.possible_moves(self.team_val)
-        #		print('My Moves : ' + str(my_moves))
+        #		logger.info('My Moves : ' + str(my_moves))
         if not my_moves:
             return None, -64
         best_move = my_moves[0]
         for move in my_moves:
-            #			print('Testing move {} on board'.format(move))
-            #			board.print()
+            #			logger.info('Testing move {} on board'.format(move))
             dboard = board.execute_turn(move, self.team_val, in_place=False)
             if depth == 0:
                 black, white = dboard.count_score()
@@ -240,20 +243,20 @@ class DiggingGlutton(Player):
             else:
                 min_score = 64
                 adv_moves = dboard.possible_moves(-self.team_val)
-                #				print('His moves : {}'.format(adv_moves))
+                #				logger.info('His moves : {}'.format(adv_moves))
                 for adv_move in adv_moves:
-                    #					print('Assuming he plays {} on board'.format(adv_move))
+                    #					logger.info('Assuming he plays {} on board'.format(adv_move))
                     #					dboard.print()
                     ddboard = dboard.execute_turn(adv_move, -self.team_val, in_place=False)
                     _, score = self.get_score(ddboard, depth=depth - 1)
                     min_score = min(min_score, score)
                 if not adv_moves:
                     _, min_score = self.get_score(dboard, depth=depth - 1)
-            #			print('------------------------Min score for move {} is {}----------------------------'.format(move, min_score))
+            #			logger.info('------------------------Min score for move {} is {}----------------------------'.format(move, min_score))
             if min_score >= best_score:
                 best_move = move
                 best_score = min_score
-        #		print('------------------------Max score is {}----------------------------'.format(best_score))
+        #		logger.info('------------------------Max score is {}----------------------------'.format(best_score))
         return best_move, best_score
 
 
@@ -362,22 +365,22 @@ class HumanPlayer(Player):
             team = 'white'
         format_ok = False
         while not format_ok:
-            print('\nTime for the ' + team + ' team to play !')
+            logger.info('\nTime for the ' + team + ' team to play !')
             txt = input('Where do you want to place a pawn ?\n\n')
-            print('')
+            logger.info('')
             try:
                 j = ord(txt[0].lower()) - ord('a')
                 i = int(txt[1]) - 1
             except:
-                print('Use a format like "b7" !')
+                logger.info('Use a format like "b7" !')
                 continue
             if i in range(8) and j in range(8):
                 if board.is_move_possible((i, j), self.team_val):
                     format_ok = True
                 else:
-                    print("You can't put it there")
+                    logger.info("You can't put it there")
             else:
-                print('Use a format like "b7" !')
+                logger.info('Use a format like "b7" !')
         return i, j
 
 
@@ -396,14 +399,14 @@ class MCTS(Player):
         while not node.is_leaf:
             ctr += 1
             if ctr > 100:
-                print(node)
+                logger.info(node)
             node = node.choose_child()
         node.expand()
         if not node.is_terminal:
             try:
                 node = node.choose_child(random=True)
             except ValueError as err:
-                print(node.children)
+                logger.info(node.children)
                 raise err
         value = node.simulate_game(self.player1, self.player2)
         node.update(value)
@@ -417,10 +420,10 @@ class MCTS(Player):
         try:
             assert board.is_move_possible(best_move, self.team_val)
         except AssertionError:
-            print(self.tree.children)
-            print(best_move)
-            print(board.possible_moves(self.team_val))
-            print(board.possible_moves(-self.team_val))
+            logger.info(self.tree.children)
+            logger.info(best_move)
+            logger.info(board.possible_moves(self.team_val))
+            logger.info(board.possible_moves(-self.team_val))
             raise AssertionError
         self.tree = node
         self.tree.parent = None
@@ -582,7 +585,7 @@ class Alpha(Player):
         while not node.is_leaf:
             ctr += 1
             if ctr > 100:
-                print(node)
+                logger.info(node)
             node = node.choose_child()
         node.expand(self.network)
 
@@ -606,10 +609,10 @@ class Alpha(Player):
         try:
             assert board.is_move_possible(move, self.team_val)
         except AssertionError:
-            print(self.tree.children)
-            print(move)
-            print(board.possible_moves(self.team_val))
-            print(board.possible_moves(-self.team_val))
+            logger.info(self.tree.children)
+            logger.info(move)
+            logger.info(board.possible_moves(self.team_val))
+            logger.info(board.possible_moves(-self.team_val))
             raise AssertionError
         self.tree = self.tree.children[move]
         self.tree.parent = None
